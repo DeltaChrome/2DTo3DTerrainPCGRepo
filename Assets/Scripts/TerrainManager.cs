@@ -11,8 +11,8 @@ using UnityEngine;
 public class TerrainManager : MonoBehaviour
 {
 
-    public const float SIZE = 257.0f;
-    public const float SIZE_FULL = 2049.0f;
+    public const float SIZE = 257.0f;//UNUSED!
+    public const float SIZE_FULL = 2049.0f;//Resolution of the height map texture
 
     public Texture2D ColourRepresentation;
     public Color32[,] Grid1TerrainType = new Color32[(int)SIZE_FULL, (int)SIZE_FULL];
@@ -27,18 +27,14 @@ public class TerrainManager : MonoBehaviour
     public GameObject terrainObj2;
 
     Terrain terr;
-    Terrain terr2;
+    Terrain terr2;//UNUSED
 
     Renderer renderer;
-
     
-
     //Water Manager Script - Eric's Code
     //Agent Manager Script - Nader's Code
     //*Mountain Manager Script - Jacob's Code*
 
-
-    
     // Start is called before the first frame update
     void Start()
     {
@@ -53,7 +49,7 @@ public class TerrainManager : MonoBehaviour
         //terrainObj.terr.GetComponent<Terrain>();
 
         terr = terrainObj.GetComponent<Terrain>();
-        terr2 = terrainObj2.GetComponent<Terrain>();
+        //terr2 = terrainObj2.GetComponent<Terrain>();
         //terr.terrainData.heightmapResolution = 257;
 
         renderer = testImage.GetComponent<Renderer>();
@@ -69,68 +65,10 @@ public class TerrainManager : MonoBehaviour
     {
         Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
 
-        
-
-        //print("x and y");
-        //print(xOffset);
-        //print(yOffset);
-
-        float frequency = 2.0f;
-
         float noiseValue = 0.0f;
 
-        //First layer of noise
+        createMultiLayeredNoise();
 
-        for (int numLayers = 0; numLayers < 8; numLayers++)
-        {
-
-            float xOffset = Random.Range(0.0f, 99999.0f);
-            float yOffset = Random.Range(0.0f, 99999.0f);
-
-            if(numLayers == 0)
-            {
-                frequency = Random.Range(0.75f, 1.5f);
-
-            }
-
-                frequency += (numLayers * 4) + 1;
-
-            //float limit = 3.0f;
-            //float layerDiv = 3.0f;
-
-            //layerDiv = limit - numLayers;
-
-            for (int y = 0; y < SIZE_FULL; y++)
-            {
-                for (int x = 0; x < SIZE_FULL; x++)
-                {
-                
-                    float xCoord = ((float)x / SIZE_FULL) * frequency + xOffset;
-                    float yCoord = ((float)y / SIZE_FULL) * frequency + yOffset;
-
-                    if(numLayers == 0)
-                    {
-                        noiseFunctionOneArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
-                
-                    }
-                    else
-                    {
-                        noiseFunctionOneArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
-
-                    }
-
-                    //noiseValue = Mathf.PerlinNoise(xCoord, yCoord);
-
-                    //noiseFunctionOneArray[x, y] = ((int)(Mathf.PerlinNoise(xCoord, yCoord) * 100.0f)) / 100;
-
-                }
-            }
-        }
-
-        //TerrainData terrainData = terrain.GetComponent<TerrainData>();
-        //terrainData.Texture2D[0] = texture;
-
-        //CHANGED FROM 1k to 513!!!!
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++)
         {
@@ -138,40 +76,18 @@ public class TerrainManager : MonoBehaviour
             {
                 noiseValue = noiseFunctionOneArray[x, y] / 2.0f;
 
-                //print(noiseValue);
-
                 Color color = new Color(noiseValue, noiseValue, noiseValue);
 
                 texture.SetPixel(x, y, color);
 
                 //Create Terrain Height Map Cell 1
                 noiseFunctionOneArray2[x, y] = noiseValue;
-               
 
             }
         }
 
+        //Set terrain height map
         terr.terrainData.SetHeights(0, 0, noiseFunctionOneArray2);
-
-        //TERRAIN 2
-        //for (int y = 0; y < SIZE; y++)
-        //{
-        //    for (int x = (int) SIZE; x < SIZE * 2; x++)
-        //    {
-        //        noiseValue = noiseFunctionOneArray[x, y] / 5.0f;
-
-        //        //print(noiseValue);
-
-        //        //Color color = new Color(noiseValue, noiseValue, noiseValue);
-
-        //        //texture.SetPixel(x, y, color);
-
-        //        //Create Terrain Height Map Cell 1
-        //        noiseFunctionOneArray2[x - (int)SIZE, y] = noiseValue;
-
-        //    }
-        //}
-        //terr2.terrainData.SetHeights(0, 0, noiseFunctionOneArray2);
 
         //Apply texture
         texture.Apply();
@@ -184,7 +100,6 @@ public class TerrainManager : MonoBehaviour
             }
         }
 
-
         return texture;
     }
 
@@ -194,30 +109,11 @@ public class TerrainManager : MonoBehaviour
         //renderer.material.mainTexture = GenerateTexture();
     }
 
+    //UNUSED
     void createTerrainCell(int cellNum)
     {
 
-
-
-        ////TERRAIN 2
-        //for (int y = 0; y < SIZE; y++)
-        //{
-        //    for (int x = (int)SIZE; x < SIZE * 2; x++)
-        //    {
-        //        noiseValue = noiseFunctionOneArray[x, y] / 5.0f;
-
-        //        //print(noiseValue);
-
-        //        //Color color = new Color(noiseValue, noiseValue, noiseValue);
-
-        //        //texture.SetPixel(x, y, color);
-
-        //        //Create Terrain Height Map Cell 1
-        //        noiseFunctionOneArray2[x - (int)SIZE, y] = noiseValue;
-        //        terr2.terrainData.SetHeights(0, 0, noiseFunctionOneArray2);
-
-        //    }
-        //}
+      
     }
 
     //Creates Terrain Type Grid from the image file for colourRepresentation
@@ -280,22 +176,48 @@ public class TerrainManager : MonoBehaviour
     //Creates and merges perlin noise for height variance
     void createMultiLayeredNoise()
     {
-        //First layer of noise
-        for(int y = 0; y < 1000; y++)
+
+        float frequency = 2.0f;
+        float noiseValue = 0.0f;
+
+        //8 layers of noise
+        for (int numLayers = 0; numLayers < 8; numLayers++)
         {
-            for (int x = 0; x < 1000; x++)
+
+            float xOffset = Random.Range(0.0f, 99999.0f);
+            float yOffset = Random.Range(0.0f, 99999.0f);
+
+            if (numLayers == 0)
             {
+                frequency = Random.Range(0.75f, 1.5f);
 
-                float xCoord = ((float)x / 1000.0f) * 4.0f + 0.0f;
-                float yCoord = ((float)y / 1000.0f) * 4.0f + 0.0f;
+            }
 
-                noiseFunctionOneArray[x, y] = (Mathf.PerlinNoise(xCoord, yCoord));
-                //noiseFunctionOneArray[x, y] = ((int)(Mathf.PerlinNoise(xCoord, yCoord) * 100.0f)) / 100;
+            frequency += (numLayers * 4) + 1;
 
+            for (int y = 0; y < SIZE_FULL; y++)
+            {
+                for (int x = 0; x < SIZE_FULL; x++)
+                {
+
+                    float xCoord = ((float)x / SIZE_FULL) * frequency + xOffset;
+                    float yCoord = ((float)y / SIZE_FULL) * frequency + yOffset;
+
+                    if (numLayers == 0)
+                    {
+                        noiseFunctionOneArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
+
+                    }
+                    else
+                    {
+                        noiseFunctionOneArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
+
+                    }
+
+                }
             }
         }
 
-        //asfdsgfgd
 
     }
 
