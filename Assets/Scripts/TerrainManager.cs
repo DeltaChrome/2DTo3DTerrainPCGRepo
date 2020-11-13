@@ -11,6 +11,7 @@ using UnityEngine;
 public class TerrainManager : MonoBehaviour
 {
 
+    //TEST
     public const float SIZE = 257.0f;//UNUSED!
     public const float SIZE_FULL = 2049.0f;//Resolution of the height map texture
 
