@@ -61,16 +61,16 @@ public class TerrainManager : MonoBehaviour {
 
     void InitMaps () {
         // Set texture of perlinNoiseMiniMap.
-        perlinNoiseMaterial = new Material (Shader.Find ("Unlit/Texture"));
-        perlinNoiseMiniMap = GameObject.Find ("perlinNoiseMiniMap").GetComponent<Image> ();
+        perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
+        perlinNoiseMiniMap = GameObject.Find("perlinNoiseMiniMap").GetComponent<Image>();
         perlinNoiseMiniMap.material = perlinNoiseMaterial;
-        perlinNoiseMiniMap.material.mainTexture = GenerateTexture ();
-
+        perlinNoiseMiniMap.material.mainTexture = GenerateTexture();
+        GenerateTexture();
         // Set texture of terrainTypeMiniMap.
-        terrainTypeMaterial = new Material (Shader.Find ("Unlit/Texture"));
-        terrainTypeMiniMap = GameObject.Find ("terrainTypeMiniMap").GetComponent<Image> ();
+        terrainTypeMaterial = new Material(Shader.Find("Unlit/Texture"));
+        terrainTypeMiniMap = GameObject.Find("terrainTypeMiniMap").GetComponent<Image>();
         terrainTypeMiniMap.material = terrainTypeMaterial;
-        terrainTypeMiniMap.material.mainTexture = InitTerrainTypeGrid ();
+        terrainTypeMiniMap.material.mainTexture = InitTerrainTypeGrid();
     }
 
     Texture2D GenerateTexture () {
@@ -78,26 +78,30 @@ public class TerrainManager : MonoBehaviour {
 
         float noiseValue = 0.0f;
 
-        CreateMultiLayeredNoise ();
+        CreateMountains();
+        //CreateMultiLayeredNoise ();
 
         //Create the texture
-        for (int y = 0; y < SIZE_FULL; y++) {
-            for (int x = 0; x < SIZE_FULL; x++) {
-                noiseValue = perlinNoiseArray[x, y] / 2.0f;
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+                // noiseValue = perlinNoiseArray[x, y] / 2.0f;
+                noiseValue = perlinNoiseArray[x, y];
 
-                Color color = new Color (noiseValue, noiseValue, noiseValue);
+                Color color = new Color(noiseValue, noiseValue, noiseValue);
 
-                texture.SetPixel (x, y, color);
+                texture.SetPixel(x, y, color);
 
                 //Create Terrain Height Map Cell 1
-                perlinNoiseArrayCell[x, y] = noiseValue;
+                //perlinNoiseArrayCell[x, y] = noiseValue;
 
             }
         }
 
         //Set terrain height map
         terrainComponent = terrainObject.GetComponent<Terrain> ();
-        terrainComponent.terrainData.SetHeights (0, 0, perlinNoiseArrayCell);
+        terrainComponent.terrainData.SetHeights (0, 0, perlinNoiseArray);
 
         //Apply texture
         texture.Apply ();
@@ -122,7 +126,7 @@ public class TerrainManager : MonoBehaviour {
         float noiseValue = 0.0f;
 
         //8 layers of noise
-        for (int numLayers = 0; numLayers < 8; numLayers++) {
+        for (int numLayers = 0; numLayers < 7; numLayers++) {
 
             float xOffset = Random.Range (0.0f, 99999.0f);
             float yOffset = Random.Range (0.0f, 99999.0f);
@@ -154,28 +158,80 @@ public class TerrainManager : MonoBehaviour {
 
     }
 
+    void CreateMountains()
+    {
+
+        float frequency = 45.0f;
+        float noiseValue = 0.0f;
+
+        //8 layers of noise
+        //for (int numLayers = 0; numLayers < 7; numLayers++)
+        //{
+        float mountainXOffset = Random.Range(0.0f, 99999.0f);
+        float mountainYOffset = Random.Range(0.0f, 99999.0f);
+
+        //frequency = Random.Range(6.0f, 8.0f);
+
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+
+                float xCoord = ((float)x / SIZE_FULL) * frequency + mountainXOffset;
+                float yCoord = ((float)y / SIZE_FULL) * frequency + mountainYOffset;
+
+                if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.99f))
+                {
+                    perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
+
+                }
+                else
+                {
+                    perlinNoiseArray[x, y] = 0;
+                    //perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
+
+                }
+
+            }
+        }
+        //}
+
+        //Take noise array, search for none 0 values, take the coords down and connect them from left to right
+        //Could search a space/ radius from the coord to look for another coord to connect via a line, any point on the line between two points
+        //creates a linear gradient perpendicular to it
+
+    }
+
     // Alex's rework
     // Creates Terrain Type Grid from the image file for inputMapTexture.
-    Texture2D InitTerrainTypeGrid () {
+    Texture2D InitTerrainTypeGrid()
+    {
 
-        Texture2D terrainTypeTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
+        Texture2D terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
 
         //Create the texture
-        for (int y = 0; y < SIZE_FULL; y++) {
-            for (int x = 0; x < SIZE_FULL; x++) {
-                if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 || x % (int) (SIZE_FULL / inputMapTextureDim) == 0) {
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+                if (y % (int)(SIZE_FULL / inputMapTextureDim) == 0 || x % (int)(SIZE_FULL / inputMapTextureDim) == 0)
+                {
                     eyedropperColour = Color.red;
-                } else {
-                    eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
                 }
-                terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                else
+                {
+                    eyedropperColour = inputMapTexture.GetPixel(y / (int)(SIZE_FULL / inputMapTextureDim), x / (int)(SIZE_FULL / inputMapTextureDim));
+                }
+                terrainTypeTexture.SetPixel(x, y, eyedropperColour);
             }
 
-            //Apply texture
-            terrainTypeTexture.Apply ();
         }
+
+        //Apply texture
+        terrainTypeTexture.Apply();
+
         return terrainTypeTexture;
     }
 }
