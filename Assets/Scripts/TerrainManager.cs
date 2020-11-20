@@ -36,6 +36,8 @@ public class TerrainManager : MonoBehaviour {
     Terrain terrainComponent;
 
     //Water Manager Script - Eric's Code
+    public WaterManager waterManager;
+
     //Agent Manager Script - Nader's Code
     //*Mountain Manager Script - Jacob's Code*
 
@@ -47,6 +49,11 @@ public class TerrainManager : MonoBehaviour {
 
         //Call Terrain creation functions
         //Call Water Manager
+
+        //Call Water Manager
+        waterManager = new GameObject().AddComponent(typeof(WaterManager)) as WaterManager;
+        waterManager.name = "WaterManager";
+
         //Call Agent Manager
     }
 
