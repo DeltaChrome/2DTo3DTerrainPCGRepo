@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,7 +20,7 @@ public class TerrainManager : MonoBehaviour {
 
     // Variables for the terrain type blending 
     public Color32[, ] terrainTypeGrid = new Color32[(int) SIZE_FULL, (int) SIZE_FULL];
-    private int terrainBorderShiftMod = 200;
+    public int terrainBorderShiftMod = 200;
 
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     Image terrainTypeMiniMap;
@@ -241,6 +242,18 @@ public class TerrainManager : MonoBehaviour {
             fillColor[i] = Color.red;
         }
         terrainTypeTexture.SetPixels (fillColor);
+        FillAndWarpHorizBorders (terrainTypeTexture);
+        WarpVertBorders (terrainTypeTexture);
+
+
+        //Apply texture
+        terrainTypeTexture.Apply ();
+
+        return terrainTypeTexture;
+    }
+
+    void FillAndWarpHorizBorders (Texture2D terrainTypeTexture) {
+
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
 
@@ -280,6 +293,11 @@ public class TerrainManager : MonoBehaviour {
             }
 
         }
+    }
+
+    void WarpVertBorders (Texture2D terrainTypeTexture) {
+        Color eyedropperColour;
+        inputMapTextureDim = inputMapTexture.height;
 
         //Create the texture
         for (int x = 0; x < SIZE_FULL; x++) {
@@ -305,15 +323,10 @@ public class TerrainManager : MonoBehaviour {
                             terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
                         }
                     }
-                    terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                    //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                 }
             }
         }
-
-        //Apply texture
-        terrainTypeTexture.Apply ();
-
-        return terrainTypeTexture;
     }
 
     int getBorderShiftValue (float perlinShiftValue) {
