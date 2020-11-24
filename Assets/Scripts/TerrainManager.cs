@@ -19,6 +19,7 @@ public class TerrainManager : MonoBehaviour {
 
     // Variables for the terrain type blending 
     public Color32[, ] terrainTypeGrid = new Color32[(int) SIZE_FULL, (int) SIZE_FULL];
+    private int terrainBorderShiftMod = 200;
 
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     Image terrainTypeMiniMap;
@@ -45,14 +46,15 @@ public class TerrainManager : MonoBehaviour {
     void Start () {
 
         ClearNoise (perlinNoiseArray);
+        ClearNoise (perlinNoiseArrayCell);
         InitMaps ();
 
         //Call Terrain creation functions
         //Call Water Manager
 
         //Call Water Manager
-        waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
-        waterManager.name = "WaterManager";
+        //waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
+        //waterManager.name = "WaterManager";
 
         //Call Agent Manager
     }
@@ -86,7 +88,7 @@ public class TerrainManager : MonoBehaviour {
         float noiseValue = 0.0f;
 
         CreateMountains ();
-        //CreateMultiLayeredNoise ();
+        CreateMultiLayeredNoise ();
 
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++) {
@@ -110,11 +112,6 @@ public class TerrainManager : MonoBehaviour {
 
         //Apply texture
         texture.Apply ();
-
-        //I think the below can be removed since this is already done in Start()
-
-        ClearNoise (perlinNoiseArray);
-        ClearNoise (perlinNoiseArrayCell);
 
         return texture;
     }
@@ -229,8 +226,7 @@ public class TerrainManager : MonoBehaviour {
                     terrainTypeTexture.SetPixel(x, y, eyedropperColour);
                 }
 
-            }
-
+            };
             //Apply texture
             terrainTypeTexture.Apply();
 
@@ -240,22 +236,78 @@ public class TerrainManager : MonoBehaviour {
     Texture2D InitTerrainTypeGrid () {
 
         Texture2D terrainTypeTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
+        Color[] fillColor = new Color[(int) SIZE_FULL * (int) SIZE_FULL];
+        for (int i = 0; i < fillColor.Length; i++) {
+            fillColor[i] = Color.red;
+        }
+        terrainTypeTexture.SetPixels (fillColor);
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
 
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++) {
+            float xCoord = Random.Range (0.0f, 99999.0f);
+            float yCoord = Random.Range (0.0f, 99999.0f);
+            float offset = 0;
             for (int x = 0; x < SIZE_FULL; x++) {
-                if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL-inputMapTextureDim) {
-                    eyedropperColour = Color.red;
-                } else if (x % (int) (SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL-inputMapTextureDim) {
-                    eyedropperColour = Color.yellow;
-                } else {
-                    eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                if (terrainTypeTexture.GetPixel (x, y) == Color.red) {
+                    float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
+                    offset += 0.01f;
+                    // Horizontal Border Warping
+                    if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL - inputMapTextureDim) {
+                        //eyedropperColour = Color.yellow;
+                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                        int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
+                        //Debug.Log (shiftValue);
+                        if (shiftValue > 0) {
+                            //y += shiftValue;
+                            for (int i = 0; i < shiftValue; i++) {
+                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
+                            }
+                        } else {
+                            for (int i = shiftValue; i < 0; i++) {
+                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
+                            }
+                        }
+                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                    }
+                    // Not on a border colouring
+                    else {
+                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                    }
                 }
-                terrainTypeTexture.SetPixel (x, y, eyedropperColour);
             }
 
+        }
+
+        //Create the texture
+        for (int x = 0; x < SIZE_FULL; x++) {
+            float xCoord = Random.Range (0.0f, 99999.0f);
+            float yCoord = Random.Range (0.0f, 99999.0f);
+            float offset = 0;
+            for (int y = 0; y < SIZE_FULL; y++) {
+                float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
+                offset += 0.01f;
+                // Vertical Border Warping
+                if (x % (int) (SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL - inputMapTextureDim) {
+                    //eyedropperColour = Color.yellow;
+                    eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                    int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
+                    //Debug.Log (shiftValue);
+                    if (shiftValue > 0) {
+                        //y += shiftValue;
+                        for (int i = 0; i < shiftValue; i++) {
+                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
+                        }
+                    } else {
+                        for (int i = shiftValue; i < 0; i++) {
+                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
+                        }
+                    }
+                    terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                }
+            }
         }
 
         //Apply texture
@@ -264,9 +316,22 @@ public class TerrainManager : MonoBehaviour {
         return terrainTypeTexture;
     }
 
+    int getBorderShiftValue (float perlinShiftValue) {
+        return (int) ((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
+    }
+
     /* BRAINSTORMING SECTION - Alex */
     /**
-    Goals
-        -
+    0.5 threshold, no warp
+    take perlin value, minus 0.5 then multiply by 1000
+    if negative, shift down or left by value divided by 10 floor
+    if positive, shift up or right by value divided by 10 floor
+    when shifting in a direction, cells that are "behind" get changed to shifted border cell colour
+
+    2 ways of doing the above
+    1)
+        we do it during initial color setup
+    2)
+        we do it during a second limited pass
     **/
 }
