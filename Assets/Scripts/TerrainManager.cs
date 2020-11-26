@@ -19,6 +19,9 @@ public class TerrainManager : MonoBehaviour
     // inputMapTextureDim * inputMapTextureDim pixels is the size of the user defined 2D map. We expect a square texture.
     public int inputMapTextureDim;
 
+    //Terrain type grid texture
+    Texture2D terrainTypeTexture;
+
     // Variables for the terrain type blending 
     public Color32[,] terrainTypeGrid = new Color32[(int)SIZE_FULL, (int)SIZE_FULL];
     public int terrainBorderShiftMod = 200;
@@ -44,6 +47,7 @@ public class TerrainManager : MonoBehaviour
     Terrain terrainComponent;
 
     //Water Manager Script - Eric's Code
+    public GameObject waterManagerGO;
     public WaterManager waterManager;
 
     //Agent Manager Script - Nader's Code
@@ -53,33 +57,36 @@ public class TerrainManager : MonoBehaviour
     void Start()
     {
 
+        terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+
+        //Call Water Manager
+        waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
+        waterManager.name = "WaterManager";
+
         ClearNoise(perlinNoiseArray);
         ClearNoise(perlinNoiseArrayMPass);
         ClearNoise(perlinNoiseArrayFinalized);
         ClearNoise(perlinNoiseArrayCell);
-
+ 
         //Create Noise functions and merge them
         CreateHeightArray();//Result is a filled perlinNoiseArrayFinalized array
 
+        //Create Terrain Type Grid
+        InitTerrainTypeGrid();
+
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
+        //waterManager.Init(TerrainTypeGridTHINGY)
+        //perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized)
 
-
-        //Create Grids and textures
-        InitMaps();
+        //Create Textures for Grids
+        GenerateMapsGUI();
 
         //Call Terrain creation functions
         GenerateTerrain();
 
-
-        
-       
-
-        //Call Water Manager
-        //waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
-        //waterManager.name = "WaterManager";
-
         //Call Agent Manager
+
     }
 
     // Resets noise array to hold zeros.
@@ -94,9 +101,9 @@ public class TerrainManager : MonoBehaviour
         }
     }
 
-    void InitMaps()
+    //Generates the physical GUI
+    void GenerateMapsGUI()
     {
-
         // Set texture of perlinNoiseMiniMap.
         perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
         perlinNoiseMiniMap = GameObject.Find("perlinNoiseMiniMap").GetComponent<Image>();
@@ -107,7 +114,7 @@ public class TerrainManager : MonoBehaviour
         terrainTypeMaterial = new Material(Shader.Find("Unlit/Texture"));
         terrainTypeMiniMap = GameObject.Find("terrainTypeMiniMap").GetComponent<Image>();
         terrainTypeMiniMap.material = terrainTypeMaterial;
-        terrainTypeMiniMap.material.mainTexture = InitTerrainTypeGrid();
+        terrainTypeMiniMap.material.mainTexture = GetTerrainTypeGrid();
     }
 
     void CreateHeightArray()
@@ -308,7 +315,6 @@ public class TerrainManager : MonoBehaviour
 
     }
 
-
     void connectMountainPeaks(int x1, int y1, int x2, int y2)
     {
         //Normal Vector Variables
@@ -467,7 +473,7 @@ public class TerrainManager : MonoBehaviour
     // Creates Terrain Type Grid from the image file for inputMapTexture.
 
     /** Preserved previous version **/
-    /**
+    /*
         Texture2D InitTerrainTypeGrid()
         {
 
@@ -497,11 +503,10 @@ public class TerrainManager : MonoBehaviour
 
             return terrainTypeTexture;
         }
-    **/
-    Texture2D InitTerrainTypeGrid()
+    */
+    void InitTerrainTypeGrid()
     {
 
-        Texture2D terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
         Color[] fillColor = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
         for (int i = 0; i < fillColor.Length; i++)
         {
@@ -511,9 +516,13 @@ public class TerrainManager : MonoBehaviour
         FillAndWarpHorizBorders(terrainTypeTexture);
         WarpVertBorders(terrainTypeTexture);
 
-
         //Apply texture
         terrainTypeTexture.Apply();
+
+    }
+
+    Texture2D GetTerrainTypeGrid()
+    {
 
         return terrainTypeTexture;
     }

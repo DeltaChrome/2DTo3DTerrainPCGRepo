@@ -741,7 +741,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inputMapTexture: {fileID: 2800000, guid: 00bf9dbf005cf17458d3bc829665e67d, type: 3}
   inputMapTextureDim: 20
+  terrainBorderShiftMod: 200
   terrainObject: {fileID: 1397282278}
+  waterManagerGO: {fileID: 0}
+  waterManager: {fileID: 0}
 --- !u!4 &1465285532
 Transform:
   m_ObjectHideFlags: 0
