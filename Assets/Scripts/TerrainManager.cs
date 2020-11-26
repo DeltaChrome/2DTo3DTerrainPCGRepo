@@ -32,7 +32,10 @@ public class TerrainManager : MonoBehaviour
     // Perlin Noise Arrays.
     float[,] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
     float[,] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+
+    //To be accessed by Water Manager
     float[,] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+
     // For Individual Terrain Cell.
     float[,] perlinNoiseArrayCell = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
@@ -54,10 +57,23 @@ public class TerrainManager : MonoBehaviour
         ClearNoise(perlinNoiseArrayMPass);
         ClearNoise(perlinNoiseArrayFinalized);
         ClearNoise(perlinNoiseArrayCell);
+
+        //Create Noise functions and merge them
+        CreateHeightArray();//Result is a filled perlinNoiseArrayFinalized array
+
+        //Modify perlinNoiseArrayFinalized array for water manipulation
+        //Call Water Manager
+
+
+        //Create Grids and textures
         InitMaps();
 
         //Call Terrain creation functions
-        //Call Water Manager
+        GenerateTerrain();
+
+
+        
+       
 
         //Call Water Manager
         //waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
@@ -80,6 +96,7 @@ public class TerrainManager : MonoBehaviour
 
     void InitMaps()
     {
+
         // Set texture of perlinNoiseMiniMap.
         perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
         perlinNoiseMiniMap = GameObject.Find("perlinNoiseMiniMap").GetComponent<Image>();
@@ -93,12 +110,8 @@ public class TerrainManager : MonoBehaviour
         terrainTypeMiniMap.material.mainTexture = InitTerrainTypeGrid();
     }
 
-    Texture2D GenerateTexture()
+    void CreateHeightArray()
     {
-        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
-
-        float noiseValue = 0.0f;
-
         CreateMountains();
         CreateMultiLayeredNoise();
 
@@ -121,6 +134,15 @@ public class TerrainManager : MonoBehaviour
             }
         }
 
+    }
+
+    Texture2D GenerateTexture()
+    {
+        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+
+        float noiseValue = 0.0f;
+
+        
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++)
         {
@@ -139,19 +161,25 @@ public class TerrainManager : MonoBehaviour
             }
         }
 
+        //Apply texture
+        texture.Apply();
+
+        return texture;
+    }
+
+    void GenerateTerrain()
+    {
+        print("Generating Terrain...");
+
         //Set terrain height map
         terrainComponent = terrainObject.GetComponent<Terrain>();
         terrainComponent.terrainData.SetHeights(0, 0, perlinNoiseArrayFinalized);
-
-        //Apply texture
-        texture.Apply();
 
         ClearNoise(perlinNoiseArray);
         ClearNoise(perlinNoiseArrayCell);
         ClearNoise(perlinNoiseArrayMPass);
         ClearNoise(perlinNoiseArrayFinalized);
 
-        return texture;
     }
 
     // Update is called once per frame
