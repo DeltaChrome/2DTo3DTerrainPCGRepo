@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 /*  This Manager Manages all Managers :)
  *  Big Boss
@@ -206,12 +207,12 @@ public class TerrainManager : MonoBehaviour
         for (int numLayers = 0; numLayers < 6; numLayers++)
         {
 
-            float xOffset = UnityEngine.Random.Range(0.0f, 99999.0f);
-            float yOffset = UnityEngine.Random.Range(0.0f, 99999.0f);
+            float xOffset = Random.Range(0.0f, 99999.0f);
+            float yOffset = Random.Range(0.0f, 99999.0f);
 
             if (numLayers == 0)
             {
-                frequency = UnityEngine.Random.Range(0.75f, 1.5f);
+                frequency = Random.Range(0.75f, 1.5f);
 
             }
 
@@ -248,8 +249,8 @@ public class TerrainManager : MonoBehaviour
         float frequency = 100.0f;
         float noiseValue = 0.0f;
 
-        float mountainXOffset = UnityEngine.Random.Range(0.0f, 99999.0f);
-        float mountainYOffset = UnityEngine.Random.Range(0.0f, 99999.0f);
+        float mountainXOffset = Random.Range(0.0f, 99999.0f);
+        float mountainYOffset = Random.Range(0.0f, 99999.0f);
 
         List<int> xPointsMountainPeak = new List<int>();
         List<int> yPointsMountainPeak = new List<int>();
@@ -536,8 +537,8 @@ public class TerrainManager : MonoBehaviour
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++)
         {
-            float xCoord = UnityEngine.Random.Range(0.0f, 99999.0f);
-            float yCoord = UnityEngine.Random.Range(0.0f, 99999.0f);
+            float xCoord = Random.Range(0.0f, 99999.0f);
+            float yCoord = Random.Range(0.0f, 99999.0f);
             float offset = 0;
             for (int x = 0; x < SIZE_FULL; x++)
             {
@@ -589,8 +590,8 @@ public class TerrainManager : MonoBehaviour
         //Create the texture
         for (int x = 0; x < SIZE_FULL; x++)
         {
-            float xCoord = UnityEngine.Random.Range(0.0f, 99999.0f);
-            float yCoord = UnityEngine.Random.Range(0.0f, 99999.0f);
+            float xCoord = Random.Range(0.0f, 99999.0f);
+            float yCoord = Random.Range(0.0f, 99999.0f);
             float offset = 0;
             for (int y = 0; y < SIZE_FULL; y++)
             {
