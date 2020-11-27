@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,8 +10,7 @@ using Random = UnityEngine.Random;
  *  Big Boss
  */
 
-public class TerrainManager : MonoBehaviour
-{
+public class TerrainManager : MonoBehaviour {
 
     //Resolution of Terrain Grid & Height Map
     public const float SIZE_FULL = 2049.0f; //Resolution of the height map texture
@@ -24,8 +24,9 @@ public class TerrainManager : MonoBehaviour
     Texture2D terrainTypeTexture;
 
     // Variables for the terrain type blending 
-    public Color32[,] terrainTypeGrid = new Color32[(int)SIZE_FULL, (int)SIZE_FULL];
+    //public Color32[, ] terrainTypeGrid = new Color32[(int) SIZE_FULL, (int) SIZE_FULL];
     public int terrainBorderShiftMod = 200;
+    private int neighbourhoodRadius = 2;
 
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     Image terrainTypeMiniMap;
@@ -34,14 +35,14 @@ public class TerrainManager : MonoBehaviour
     Material perlinNoiseMaterial;
 
     // Perlin Noise Arrays.
-    float[,] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
-    float[,] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArray = new float[(int) SIZE_FULL, (int) SIZE_FULL];
+    float[, ] perlinNoiseArrayMPass = new float[(int) SIZE_FULL, (int) SIZE_FULL];
 
     //To be accessed by Water Manager
-    float[,] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayFinalized = new float[(int) SIZE_FULL, (int) SIZE_FULL];
 
     // For Individual Terrain Cell.
-    float[,] perlinNoiseArrayCell = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayCell = new float[(int) SIZE_FULL, (int) SIZE_FULL];
 
     // Variables to hold the scene's terrain data
     public GameObject terrainObject;
@@ -55,25 +56,24 @@ public class TerrainManager : MonoBehaviour
     //*Mountain Manager Script - Jacob's Code*
 
     // Start is called before the first frame update
-    void Start()
-    {
+    void Start () {
 
-        terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+        terrainTypeTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
 
         //Call Water Manager
-        waterManager = new GameObject ().AddComponent (typeof (WaterManager)) as WaterManager;
-        waterManager.name = "WaterManager";
+        //waterManager = new GameObject ().AddComponent (typeof (WaterManager)) ///as WaterManager;
+        //waterManager.name = "WaterManager";
 
-        ClearNoise(perlinNoiseArray);
-        ClearNoise(perlinNoiseArrayMPass);
-        ClearNoise(perlinNoiseArrayFinalized);
-        ClearNoise(perlinNoiseArrayCell);
- 
+        ClearNoise (perlinNoiseArray);
+        ClearNoise (perlinNoiseArrayMPass);
+        ClearNoise (perlinNoiseArrayFinalized);
+        ClearNoise (perlinNoiseArrayCell);
+
         //Create Noise functions and merge them
-        CreateHeightArray();//Result is a filled perlinNoiseArrayFinalized array
+        CreateHeightArray (); //Result is a filled perlinNoiseArrayFinalized array
 
         //Create Terrain Type Grid
-        InitTerrainTypeGrid();
+        InitTerrainTypeGrid ();
 
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
@@ -81,60 +81,50 @@ public class TerrainManager : MonoBehaviour
         //perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized)
 
         //Create Textures for Grids
-        GenerateMapsGUI();
+        GenerateMapsGUI ();
 
         //Call Terrain creation functions
-        GenerateTerrain();
+        GenerateTerrain ();
 
         //Call Agent Manager
 
     }
 
     // Resets noise array to hold zeros.
-    void ClearNoise(float[,] noiseArray)
-    {
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
+    void ClearNoise (float[, ] noiseArray) {
+        for (int y = 0; y < SIZE_FULL; y++) {
+            for (int x = 0; x < SIZE_FULL; x++) {
                 noiseArray[x, y] = 0;
             }
         }
     }
 
     //Generates the physical GUI
-    void GenerateMapsGUI()
-    {
+    void GenerateMapsGUI () {
         // Set texture of perlinNoiseMiniMap.
-        perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
-        perlinNoiseMiniMap = GameObject.Find("perlinNoiseMiniMap").GetComponent<Image>();
+        perlinNoiseMaterial = new Material (Shader.Find ("Unlit/Texture"));
+        perlinNoiseMiniMap = GameObject.Find ("perlinNoiseMiniMap").GetComponent<Image> ();
         perlinNoiseMiniMap.material = perlinNoiseMaterial;
-        perlinNoiseMiniMap.material.mainTexture = GenerateTexture();
+        perlinNoiseMiniMap.material.mainTexture = GenerateTexture ();
         //GenerateTexture ();
         // Set texture of terrainTypeMiniMap.
-        terrainTypeMaterial = new Material(Shader.Find("Unlit/Texture"));
-        terrainTypeMiniMap = GameObject.Find("terrainTypeMiniMap").GetComponent<Image>();
+        terrainTypeMaterial = new Material (Shader.Find ("Unlit/Texture"));
+        terrainTypeMiniMap = GameObject.Find ("terrainTypeMiniMap").GetComponent<Image> ();
         terrainTypeMiniMap.material = terrainTypeMaterial;
-        terrainTypeMiniMap.material.mainTexture = GetTerrainTypeGrid();
+        terrainTypeMiniMap.material.mainTexture = GetTerrainTypeGrid ();
     }
 
-    void CreateHeightArray()
-    {
-        CreateMountains();
-        CreateMultiLayeredNoise();
+    void CreateHeightArray () {
+        CreateMountains ();
+        CreateMultiLayeredNoise ();
 
         //Merge noise functions
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
-                if (perlinNoiseArrayMPass[x, y] < perlinNoiseArray[x, y])
-                {
+        for (int y = 0; y < SIZE_FULL; y++) {
+            for (int x = 0; x < SIZE_FULL; x++) {
+                if (perlinNoiseArrayMPass[x, y] < perlinNoiseArray[x, y]) {
                     perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
 
-                }
-                else
-                {
+                } else {
                     perlinNoiseArrayFinalized[x, y] = perlinNoiseArrayMPass[x, y];
 
                 }
@@ -144,24 +134,20 @@ public class TerrainManager : MonoBehaviour
 
     }
 
-    Texture2D GenerateTexture()
-    {
-        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+    Texture2D GenerateTexture () {
+        Texture2D texture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
 
         float noiseValue = 0.0f;
 
-        
         //Create the texture
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
+        for (int y = 0; y < SIZE_FULL; y++) {
+            for (int x = 0; x < SIZE_FULL; x++) {
                 // noiseValue = perlinNoiseArray[x, y] / 2.0f;
                 noiseValue = perlinNoiseArrayFinalized[x, y];
 
-                Color color = new Color(noiseValue, noiseValue, noiseValue);
+                Color color = new Color (noiseValue, noiseValue, noiseValue);
 
-                texture.SetPixel(x, y, color);
+                texture.SetPixel (x, y, color);
 
                 //Create Terrain Height Map Cell 1
                 //perlinNoiseArrayCell[x, y] = noiseValue;
@@ -170,70 +156,60 @@ public class TerrainManager : MonoBehaviour
         }
 
         //Apply texture
-        texture.Apply();
+        texture.Apply ();
 
         return texture;
     }
 
-    void GenerateTerrain()
-    {
-        print("Generating Terrain...");
+    void GenerateTerrain () {
+        print ("Generating Terrain...");
 
         //Set terrain height map
-        terrainComponent = terrainObject.GetComponent<Terrain>();
-        terrainComponent.terrainData.SetHeights(0, 0, perlinNoiseArrayFinalized);
+        terrainComponent = terrainObject.GetComponent<Terrain> ();
+        terrainComponent.terrainData.SetHeights (0, 0, perlinNoiseArrayFinalized);
 
-        ClearNoise(perlinNoiseArray);
-        ClearNoise(perlinNoiseArrayCell);
-        ClearNoise(perlinNoiseArrayMPass);
-        ClearNoise(perlinNoiseArrayFinalized);
+        ClearNoise (perlinNoiseArray);
+        ClearNoise (perlinNoiseArrayCell);
+        ClearNoise (perlinNoiseArrayMPass);
+        ClearNoise (perlinNoiseArrayFinalized);
 
     }
 
     // Update is called once per frame
-    void Update()
-    {
+    void Update () {
 
     }
 
     //Creates and merges perlin noise for height variance
-    void CreateMultiLayeredNoise()
-    {
+    void CreateMultiLayeredNoise () {
 
         float frequency = 2.0f;
         float noiseValue = 0.0f;
 
         //6 layers of noise
-        for (int numLayers = 0; numLayers < 6; numLayers++)
-        {
+        for (int numLayers = 0; numLayers < 6; numLayers++) {
 
-            float xOffset = Random.Range(0.0f, 99999.0f);
-            float yOffset = Random.Range(0.0f, 99999.0f);
+            float xOffset = Random.Range (0.0f, 99999.0f);
+            float yOffset = Random.Range (0.0f, 99999.0f);
 
-            if (numLayers == 0)
-            {
-                frequency = Random.Range(0.75f, 1.5f);
+            if (numLayers == 0) {
+                frequency = Random.Range (0.75f, 1.5f);
 
             }
 
             frequency += (numLayers * 4) + 1;
 
-            for (int y = 0; y < SIZE_FULL; y++)
-            {
-                for (int x = 0; x < SIZE_FULL; x++)
-                {
+            for (int y = 0; y < SIZE_FULL; y++) {
+                for (int x = 0; x < SIZE_FULL; x++) {
 
-                    float xCoord = ((float)x / SIZE_FULL) * frequency + xOffset;
-                    float yCoord = ((float)y / SIZE_FULL) * frequency + yOffset;
+                    float xCoord = ((float) x / SIZE_FULL) * frequency + xOffset;
+                    float yCoord = ((float) y / SIZE_FULL) * frequency + yOffset;
 
-                    if (numLayers == 0)
-                    {
-                        perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / 2.0f);
+                    if (numLayers == 0) {
+                        perlinNoiseArray[x, y] += (Mathf.PerlinNoise (xCoord, yCoord) / 2.0f);
 
-                    }
-                    else
-                    {
-                        perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (10.0f) + 20.0f));
+                    } else {
+                        perlinNoiseArray[x, y] += (Mathf.PerlinNoise (xCoord, yCoord) / ((float) numLayers * (10.0f) + 20.0f));
 
                     }
 
@@ -243,61 +219,50 @@ public class TerrainManager : MonoBehaviour
 
     }
 
-    void CreateMountains()
-    {
+    void CreateMountains () {
 
         float frequency = 100.0f;
         float noiseValue = 0.0f;
 
-        float mountainXOffset = Random.Range(0.0f, 99999.0f);
-        float mountainYOffset = Random.Range(0.0f, 99999.0f);
+        float mountainXOffset = Random.Range (0.0f, 99999.0f);
+        float mountainYOffset = Random.Range (0.0f, 99999.0f);
 
-        List<int> xPointsMountainPeak = new List<int>();
-        List<int> yPointsMountainPeak = new List<int>();
+        List<int> xPointsMountainPeak = new List<int> ();
+        List<int> yPointsMountainPeak = new List<int> ();
 
         int numPoints = 0;
 
         //frequency = Random.Range(6.0f, 8.0f);
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
+        for (int y = 0; y < SIZE_FULL; y++) {
+            for (int x = 0; x < SIZE_FULL; x++) {
 
-                float xCoord = ((float)x / SIZE_FULL) * frequency + mountainXOffset;
-                float yCoord = ((float)y / SIZE_FULL) * frequency + mountainYOffset;
+                float xCoord = ((float) x / SIZE_FULL) * frequency + mountainXOffset;
+                float yCoord = ((float) y / SIZE_FULL) * frequency + mountainYOffset;
 
                 //perlinNoiseArrayMPass[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
 
-                if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.95f))
-                {
+                if ((Mathf.PerlinNoise (xCoord, yCoord) >= 0.95f)) {
 
-                    if (numPoints == 0)
-                    {
+                    if (numPoints == 0) {
 
-                        xPointsMountainPeak.Add(x);
-                        yPointsMountainPeak.Add(y);
+                        xPointsMountainPeak.Add (x);
+                        yPointsMountainPeak.Add (y);
 
                         //Increment number of points
                         numPoints += 1;
-                    }
-
-                    else if (Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) > 15)
-                    {
-                        if (Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) < 200 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) < 200)
-                        {
+                    } else if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) > 15) {
+                        if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) < 200 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) < 200) {
                             //print("num points 0, in loop");
 
-                            xPointsMountainPeak.Add(x);
-                            yPointsMountainPeak.Add(y);
+                            xPointsMountainPeak.Add (x);
+                            yPointsMountainPeak.Add (y);
                             //Increment number of points
                             numPoints += 1;
                         }
 
                     }
                     //}
-                }
-                else
-                {
+                } else {
                     perlinNoiseArrayMPass[x, y] = 0;
                     //perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
 
@@ -306,18 +271,15 @@ public class TerrainManager : MonoBehaviour
             }
         }
 
-        print("size of points: " + xPointsMountainPeak.Count);
+        print ("size of points: " + xPointsMountainPeak.Count);
 
-
-        for (int i = 0; i < numPoints - 1; i++)
-        {
-            connectMountainPeaks(xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[i + 1], yPointsMountainPeak[i + 1]);
+        for (int i = 0; i < numPoints - 1; i++) {
+            connectMountainPeaks (xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[i + 1], yPointsMountainPeak[i + 1]);
         }
 
     }
 
-    void connectMountainPeaks(int x1, int y1, int x2, int y2)
-    {
+    void connectMountainPeaks (int x1, int y1, int x2, int y2) {
         //Normal Vector Variables
         float dx = 0;
         float dy = 0;
@@ -353,23 +315,19 @@ public class TerrainManager : MonoBehaviour
         float steps = 0;
         float stepsNormal = 0;
         //Unit vector kinda(Blue Line)
-        if (Mathf.Abs(dx) > Mathf.Abs(dy))//No clue what this is doing right now
+        if (Mathf.Abs (dx) > Mathf.Abs (dy)) //No clue what this is doing right now
         {
-            steps = Mathf.Abs(dx);
-        }
-        else
-        {
-            steps = Mathf.Abs(dy);
+            steps = Mathf.Abs (dx);
+        } else {
+            steps = Mathf.Abs (dy);
         }
 
         //Unit vector kinda(Blue Line2)
-        if (Mathf.Abs(normalDX) > Mathf.Abs(normalDY))//No clue what this is doing right now
+        if (Mathf.Abs (normalDX) > Mathf.Abs (normalDY)) //No clue what this is doing right now
         {
-            stepsNormal = Mathf.Abs(normalDX);
-        }
-        else
-        {
-            stepsNormal = Mathf.Abs(normalDY);
+            stepsNormal = Mathf.Abs (normalDX);
+        } else {
+            stepsNormal = Mathf.Abs (normalDY);
         }
 
         float moveX = dx / steps;
@@ -388,73 +346,56 @@ public class TerrainManager : MonoBehaviour
 
         float size = 80;
 
-        for (int i = 0; i <= steps; i++)
-        {
+        for (int i = 0; i <= steps; i++) {
 
-            try
-            {
+            try {
 
-                for (float j = size; j > 0; j--)
-                {
+                for (float j = size; j > 0; j--) {
                     //place pixel to the left and right of line perpendicularly
                     lineGradientXNormal += moveXNormal;
                     lineGradientYNormal += moveYNormal;
 
-
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal] = j / size;
                     }
 
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal + 1] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal + 1] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal + 1] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal + 1] = j / size;
                     }
 
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal + 1, (int)lineGradientYNormal] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal + 1, (int)lineGradientYNormal] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal + 1, (int) lineGradientYNormal] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal + 1, (int) lineGradientYNormal] = j / size;
                     }
 
                 }
 
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 //  print("point outside of map");
 
             }
             lineGradientXNormal = lineGradientX;
             lineGradientYNormal = lineGradientY;
-            try
-            {
+            try {
 
-
-                for (float j = size; j > 0; j--)
-                {
+                for (float j = size; j > 0; j--) {
                     //place pixel to the left and right of line perpendicularly
                     lineGradientXNormal -= moveXNormal;
                     lineGradientYNormal -= moveYNormal;
 
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal] = j / size;
                     }
 
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal + 1] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal, (int)lineGradientYNormal + 1] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal + 1] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal, (int) lineGradientYNormal + 1] = j / size;
                     }
 
-                    if (perlinNoiseArrayMPass[(int)lineGradientXNormal + 1, (int)lineGradientYNormal] < j / size)
-                    {
-                        perlinNoiseArrayMPass[(int)lineGradientXNormal + 1, (int)lineGradientYNormal] = j / size;
+                    if (perlinNoiseArrayMPass[(int) lineGradientXNormal + 1, (int) lineGradientYNormal] < j / size) {
+                        perlinNoiseArrayMPass[(int) lineGradientXNormal + 1, (int) lineGradientYNormal] = j / size;
                     }
 
                 }
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 // print("point outside of map");
 
             }
@@ -472,151 +413,101 @@ public class TerrainManager : MonoBehaviour
 
     // Alex's rework
     // Creates Terrain Type Grid from the image file for inputMapTexture.
+    void InitTerrainTypeGrid () {
 
-    /** Preserved previous version **/
-    /*
-        Texture2D InitTerrainTypeGrid()
-        {
+        ColorCorrectInputMap ();
 
-            Texture2D terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
-            Color eyedropperColour;
-            inputMapTextureDim = inputMapTexture.height;
-
-            //Create the texture
-            for (int y = 0; y < SIZE_FULL; y++)
-            {
-                for (int x = 0; x < SIZE_FULL; x++)
-                {
-                    if (y % (int)(SIZE_FULL / inputMapTextureDim) == 0 || x % (int)(SIZE_FULL / inputMapTextureDim) == 0)
-                    {
-                        eyedropperColour = Color.red;
-                    }
-                    else
-                    {
-                        eyedropperColour = inputMapTexture.GetPixel(y / (int)(SIZE_FULL / inputMapTextureDim), x / (int)(SIZE_FULL / inputMapTextureDim));
-                    }
-                    terrainTypeTexture.SetPixel(x, y, eyedropperColour);
-                }
-
-            };
-            //Apply texture
-            terrainTypeTexture.Apply();
-
-            return terrainTypeTexture;
-        }
-    */
-    void InitTerrainTypeGrid()
-    {
-
-        Color[] fillColor = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
-        for (int i = 0; i < fillColor.Length; i++)
-        {
+        Color[] fillColor = new Color[(int) SIZE_FULL * (int) SIZE_FULL];
+        for (int i = 0; i < fillColor.Length; i++) {
             fillColor[i] = Color.red;
         }
-        terrainTypeTexture.SetPixels(fillColor);
-        FillAndWarpHorizBorders(terrainTypeTexture);
-        WarpVertBorders(terrainTypeTexture);
+        terrainTypeTexture.SetPixels (fillColor);
+        FillAndWarpHorizBorders ();
+        WarpVertBorders ();
+        for (int i = 0; i < 0; i++)
+        {
+            terrainTypeTexture = BlurTerrainBorders ();
+        }
+
 
         //Apply texture
-        terrainTypeTexture.Apply();
+        terrainTypeTexture.Apply ();
 
     }
 
-    Texture2D GetTerrainTypeGrid()
-    {
+    Texture2D GetTerrainTypeGrid () {
 
         return terrainTypeTexture;
     }
 
-    void FillAndWarpHorizBorders(Texture2D terrainTypeTexture)
-    {
+    void FillAndWarpHorizBorders () {
 
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
+        int index = 0;
 
         //Create the texture
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            float xCoord = Random.Range(0.0f, 99999.0f);
-            float yCoord = Random.Range(0.0f, 99999.0f);
+        for (int y = 0; y < SIZE_FULL; y++) {
+            float xCoord = Random.Range (0.0f, 99999.0f);
+            float yCoord = Random.Range (0.0f, 99999.0f);
             float offset = 0;
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
-                if (terrainTypeTexture.GetPixel(x, y) == Color.red)
-                {
-                    float startPerlinWalkCoord = (Mathf.PerlinNoise(xCoord + offset, yCoord));
+            for (int x = 0; x < SIZE_FULL; x++) {
+                if (terrainTypeTexture.GetPixel (x, y) == Color.red) {
+                    float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
                     offset += 0.01f;
                     // Horizontal Border Warping
-                    if (y % (int)(SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL - inputMapTextureDim)
-                    {
+                    if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL - inputMapTextureDim) {
                         //eyedropperColour = Color.yellow;
-                        eyedropperColour = inputMapTexture.GetPixel(y / (int)(SIZE_FULL / inputMapTextureDim), x / (int)(SIZE_FULL / inputMapTextureDim));
-                        int shiftValue = getBorderShiftValue(startPerlinWalkCoord);
+                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                        int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
                         //Debug.Log (shiftValue);
-                        if (shiftValue > 0)
-                        {
-                            //y += shiftValue;
-                            for (int i = 0; i < shiftValue; i++)
-                            {
-                                terrainTypeTexture.SetPixel(x, y + i, eyedropperColour);
+                        if (shiftValue > 0) {
+                            for (int i = 0; i < shiftValue; i++) {
+                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
+                            }
+                        } else {
+                            for (int i = shiftValue; i < 0; i++) {
+                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
                             }
                         }
-                        else
-                        {
-                            for (int i = shiftValue; i < 0; i++)
-                            {
-                                terrainTypeTexture.SetPixel(x, y + i, eyedropperColour);
-                            }
-                        }
-                        terrainTypeTexture.SetPixel(x, y, eyedropperColour);
+                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                     }
                     // Not on a border colouring
-                    else
-                    {
-                        eyedropperColour = inputMapTexture.GetPixel(y / (int)(SIZE_FULL / inputMapTextureDim), x / (int)(SIZE_FULL / inputMapTextureDim));
-                        terrainTypeTexture.SetPixel(x, y, eyedropperColour);
+                    else {
+                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                     }
                 }
+                index++;
             }
 
         }
     }
 
-    void WarpVertBorders(Texture2D terrainTypeTexture)
-    {
+    void WarpVertBorders () {
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
 
         //Create the texture
-        for (int x = 0; x < SIZE_FULL; x++)
-        {
-            float xCoord = Random.Range(0.0f, 99999.0f);
-            float yCoord = Random.Range(0.0f, 99999.0f);
+        for (int x = 0; x < SIZE_FULL; x++) {
+            float xCoord = Random.Range (0.0f, 99999.0f);
+            float yCoord = Random.Range (0.0f, 99999.0f);
             float offset = 0;
-            for (int y = 0; y < SIZE_FULL; y++)
-            {
-                float startPerlinWalkCoord = (Mathf.PerlinNoise(xCoord + offset, yCoord));
+            for (int y = 0; y < SIZE_FULL; y++) {
+                float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
                 offset += 0.01f;
                 // Vertical Border Warping
-                if (x % (int)(SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL - inputMapTextureDim)
-                {
+                if (x % (int) (SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL - inputMapTextureDim) {
                     //eyedropperColour = Color.yellow;
-                    eyedropperColour = inputMapTexture.GetPixel(y / (int)(SIZE_FULL / inputMapTextureDim), x / (int)(SIZE_FULL / inputMapTextureDim));
-                    int shiftValue = getBorderShiftValue(startPerlinWalkCoord);
-                    //Debug.Log (shiftValue);
-                    if (shiftValue > 0)
-                    {
-                        //y += shiftValue;
-                        for (int i = 0; i < shiftValue; i++)
-                        {
-                            terrainTypeTexture.SetPixel(x + i, y, eyedropperColour);
+                    eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                    int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
+                    if (shiftValue > 0) {
+                        for (int i = 0; i < shiftValue; i++) {
+                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
                         }
-                    }
-                    else
-                    {
-                        for (int i = shiftValue; i < 0; i++)
-                        {
-                            terrainTypeTexture.SetPixel(x + i, y, eyedropperColour);
+                    } else {
+                        for (int i = shiftValue; i < 0; i++) {
+                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
                         }
                     }
                     //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
@@ -625,9 +516,81 @@ public class TerrainManager : MonoBehaviour
         }
     }
 
-    int getBorderShiftValue(float perlinShiftValue)
-    {
-        return (int)((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
+    Texture2D BlurTerrainBorders () {
+        Texture2D blurTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
+        for (int x = 0; x < SIZE_FULL; x++) {
+            for (int y = 0; y < SIZE_FULL; y++) {
+                blurTexture.SetPixel (x, y, CalculateNewTerrainWeight (x, y));
+                //Debug.Log(blurTexture.GetPixel(x, y));
+            }
+        }
+        return blurTexture;
+    }
+
+    //
+    Color CalculateNewTerrainWeight (int xCoord, int yCoord) {
+        Color centreCell = terrainTypeTexture.GetPixel (xCoord, yCoord);
+        Color[] neighbours = new Color[(neighbourhoodRadius * 2 + 1) * (neighbourhoodRadius * 2 + 1)];
+        int index = 0;
+        for (int x = -neighbourhoodRadius; x < neighbourhoodRadius + 1; x++) {
+            for (int y = -neighbourhoodRadius; y < neighbourhoodRadius + 1; y++) {
+                float weightDistanceMultiplier = (3.0f/4.0f);
+                if (x == 0 && y == 0){
+                 neighbours[index] = new Color (centreCell.r * (1.0f/4.0f), centreCell.g * (1.0f/4.0f), centreCell.b * (1.0f/4.0f));   
+                }
+                else if (xCoord + x >= 0 && xCoord < SIZE_FULL && yCoord + y >= 0 && yCoord < SIZE_FULL) {
+                    Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord + x, yCoord + y);
+                    int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
+                    for (int i = 0; i < distance; i++) {
+                        if (i + 1 == distance) {
+                            weightDistanceMultiplier = weightDistanceMultiplier/(8*distance);
+                        } else {
+                            weightDistanceMultiplier = (3.0f/4.0f)*weightDistanceMultiplier;
+                        }
+                    }
+                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier);
+                } else {
+                    Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord, yCoord);
+                    int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
+                    for (int i = 0; i < distance; i++) {
+                        if (i + 1 == distance) {
+                            weightDistanceMultiplier = weightDistanceMultiplier/(8*distance);
+                        } else {
+                            weightDistanceMultiplier = (3.0f/4.0f)*weightDistanceMultiplier;
+                        }
+                    }
+                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier);
+                }
+                index++;
+            }
+        }
+        Color newWeight = new Color(0,0,0,0);
+        foreach (Color contributingColor in neighbours)
+        {
+            newWeight = new Color(newWeight.r + contributingColor.r, newWeight.g + contributingColor.g, newWeight.b + contributingColor.b);
+        }
+        return newWeight;
+    }
+
+    int getBorderShiftValue (float perlinShiftValue) {
+        return (int) ((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
+    }
+
+    // This basically has to exist until inputs that have *only* 4 colours are given. Currently, the provided example images do not have only 4 colours.
+    void ColorCorrectInputMap () {
+        for (int i = 0; i < inputMapTexture.width; i++) {
+            for (int j = 0; j < inputMapTexture.height; j++) {
+                if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
+                    inputMapTexture.SetPixel (i, j, new Color (0, 0, 0, 1));
+                } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
+                    inputMapTexture.SetPixel (i, j, new Color (0, 0, 1.0f, 0));
+                } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {
+                    inputMapTexture.SetPixel (i, j, new Color (0, 1.0f, 0, 0));
+                } else {
+                    inputMapTexture.SetPixel (i, j, new Color (1.0f, 0, 0, 0));
+                }
+            }
+        }
     }
 
     /* BRAINSTORMING SECTION - Alex */
