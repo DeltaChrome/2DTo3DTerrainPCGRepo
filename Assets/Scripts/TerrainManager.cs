@@ -28,7 +28,7 @@ public class TerrainManager : MonoBehaviour {
     // Variables for the terrain type blending 
     public Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
     public int terrainBorderShiftMod = 200;
-    private int neighbourhoodRadius = 3;
+    private int neighbourhoodRadius = 2;
 
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     Image terrainTypeMiniMap;
@@ -579,7 +579,7 @@ public class TerrainManager : MonoBehaviour {
                             weightDistanceMultiplier = (3.0f/4.0f)*weightDistanceMultiplier;
                         }
                     }
-                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier);
+                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier, neighbourWeight.a * weightDistanceMultiplier);
                 } else {
                     Color neighbourWeight = terrainTypeGrid[xCoord, yCoord];
                     //Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord, yCoord);
@@ -591,7 +591,7 @@ public class TerrainManager : MonoBehaviour {
                             weightDistanceMultiplier = (3.0f/4.0f)*weightDistanceMultiplier;
                         }
                     }
-                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier);
+                    neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier, neighbourWeight.a * weightDistanceMultiplier);
                 }
                 index++;
             }
@@ -599,7 +599,7 @@ public class TerrainManager : MonoBehaviour {
         Color newWeight = new Color(0,0,0,0);
         foreach (Color contributingColor in neighbours)
         {
-            newWeight = new Color(newWeight.r + contributingColor.r, newWeight.g + contributingColor.g, newWeight.b + contributingColor.b);
+            newWeight = new Color(newWeight.r + contributingColor.r, newWeight.g + contributingColor.g, newWeight.b + contributingColor.b, newWeight.a + contributingColor.a);
         }
         return newWeight;
     }
