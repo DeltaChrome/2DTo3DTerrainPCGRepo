@@ -1,4 +1,5 @@
 ﻿
+using System.Xml.Schema;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,18 +16,19 @@ public class TerrainManager : MonoBehaviour {
     //Resolution of Terrain Grid & Height Map
     public const float SIZE_FULL = 2049.0f; //Resolution of the height map texture
 
+    // inputMapTextureDim * inputMapTextureDim pixels is the size of the user defined 2D map. We expect a square texture.
+    public int inputMapTextureDim = 20;
     // Our user defined and provided 2D tiled map as a texture2D
     public Texture2D inputMapTexture;
-    // inputMapTextureDim * inputMapTextureDim pixels is the size of the user defined 2D map. We expect a square texture.
-    public int inputMapTextureDim;
+    private Color[, ] inputMapGrid;
 
     //Terrain type grid texture
     Texture2D terrainTypeTexture;
 
     // Variables for the terrain type blending 
-    //public Color32[, ] terrainTypeGrid = new Color32[(int) SIZE_FULL, (int) SIZE_FULL];
+    public Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
     public int terrainBorderShiftMod = 200;
-    private int neighbourhoodRadius = 2;
+    private int neighbourhoodRadius = 3;
 
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     Image terrainTypeMiniMap;
@@ -415,18 +417,36 @@ public class TerrainManager : MonoBehaviour {
     // Creates Terrain Type Grid from the image file for inputMapTexture.
     void InitTerrainTypeGrid () {
 
+        inputMapGrid = new Color[inputMapTextureDim,inputMapTextureDim];
         ColorCorrectInputMap ();
-
-        Color[] fillColor = new Color[(int) SIZE_FULL * (int) SIZE_FULL];
+        /* 
+        Color[,] fillColor = new Color32[(int) SIZE_FULL, (int) SIZE_FULL];
+         
         for (int i = 0; i < fillColor.Length; i++) {
             fillColor[i] = Color.red;
         }
         terrainTypeTexture.SetPixels (fillColor);
+        */
+        for (int i = 0; i < SIZE_FULL; i++)
+        {
+            for (int n = 0; n < SIZE_FULL; n++)
+            {
+                terrainTypeGrid[i,n] = Color.yellow;
+            }
+        }
         FillAndWarpHorizBorders ();
         WarpVertBorders ();
         for (int i = 0; i < 0; i++)
         {
-            terrainTypeTexture = BlurTerrainBorders ();
+            terrainTypeGrid = BlurTerrainBorders ();
+        }
+
+        for (int x = 0; x < SIZE_FULL; x++)
+        {
+            for (int y = 0; y < SIZE_FULL; y++)
+            {
+                terrainTypeTexture.SetPixel(x, y, terrainTypeGrid[x,y]);
+            }
         }
 
 
@@ -452,30 +472,38 @@ public class TerrainManager : MonoBehaviour {
             float yCoord = Random.Range (0.0f, 99999.0f);
             float offset = 0;
             for (int x = 0; x < SIZE_FULL; x++) {
-                if (terrainTypeTexture.GetPixel (x, y) == Color.red) {
+                if (terrainTypeGrid[x, y] == Color.yellow) {
                     float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
                     offset += 0.01f;
                     // Horizontal Border Warping
                     if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL - inputMapTextureDim) {
                         //eyedropperColour = Color.yellow;
-                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                        eyedropperColour = inputMapGrid[Mathf.Min((int)(y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim-1),Mathf.Min((int)( x / (int) (SIZE_FULL / inputMapTextureDim)),inputMapTextureDim-1)];
+                        //eyedropperColour = inputMapGrid[y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim)];
                         int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
                         //Debug.Log (shiftValue);
                         if (shiftValue > 0) {
                             for (int i = 0; i < shiftValue; i++) {
-                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
+                                terrainTypeGrid[x,y+i] = eyedropperColour;
+                                ///terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
                             }
                         } else {
                             for (int i = shiftValue; i < 0; i++) {
-                                terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
+                                terrainTypeGrid[x,y+i] = eyedropperColour;
+                                //terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
                             }
                         }
-                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                        terrainTypeGrid[x,y] = eyedropperColour;
+                        //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                     }
                     // Not on a border colouring
                     else {
-                        eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
-                        terrainTypeTexture.SetPixel (x, y, eyedropperColour);
+                        //Debug.Log((int)(y / (int) (SIZE_FULL / inputMapTextureDim)));
+                        //Debug.Log((int)( x / (int) (SIZE_FULL / inputMapTextureDim)));
+                        eyedropperColour = inputMapGrid[Mathf.Min((int)(y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim-1),Mathf.Min((int)( x / (int) (SIZE_FULL / inputMapTextureDim)),inputMapTextureDim-1)];
+                        //eyedropperColour = inputMapGrid[y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim)];
+                        terrainTypeGrid[x,y] = eyedropperColour;
+                        //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                     }
                 }
                 index++;
@@ -499,15 +527,17 @@ public class TerrainManager : MonoBehaviour {
                 // Vertical Border Warping
                 if (x % (int) (SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL - inputMapTextureDim) {
                     //eyedropperColour = Color.yellow;
-                    eyedropperColour = inputMapTexture.GetPixel (y / (int) (SIZE_FULL / inputMapTextureDim), x / (int) (SIZE_FULL / inputMapTextureDim));
+                    eyedropperColour = inputMapGrid[Mathf.Min((int)(y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim-1),Mathf.Min((int)( x / (int) (SIZE_FULL / inputMapTextureDim)),inputMapTextureDim-1)];
                     int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
                     if (shiftValue > 0) {
                         for (int i = 0; i < shiftValue; i++) {
-                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
+                            terrainTypeGrid[x+i,y] = eyedropperColour;
+                            //terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
                         }
                     } else {
                         for (int i = shiftValue; i < 0; i++) {
-                            terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
+                            terrainTypeGrid[x+i,y] = eyedropperColour;
+                            //terrainTypeTexture.SetPixel (x + i, y, eyedropperColour);
                         }
                     }
                     //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
@@ -516,20 +546,20 @@ public class TerrainManager : MonoBehaviour {
         }
     }
 
-    Texture2D BlurTerrainBorders () {
-        Texture2D blurTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
+    Color[,] BlurTerrainBorders () {
+        Color[,] blurTerrain = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
         for (int x = 0; x < SIZE_FULL; x++) {
             for (int y = 0; y < SIZE_FULL; y++) {
-                blurTexture.SetPixel (x, y, CalculateNewTerrainWeight (x, y));
+                blurTerrain[x,y] = CalculateNewTerrainWeight (x, y);
                 //Debug.Log(blurTexture.GetPixel(x, y));
             }
         }
-        return blurTexture;
+        return blurTerrain;
     }
 
     //
     Color CalculateNewTerrainWeight (int xCoord, int yCoord) {
-        Color centreCell = terrainTypeTexture.GetPixel (xCoord, yCoord);
+        Color centreCell = terrainTypeGrid[xCoord, yCoord];
         Color[] neighbours = new Color[(neighbourhoodRadius * 2 + 1) * (neighbourhoodRadius * 2 + 1)];
         int index = 0;
         for (int x = -neighbourhoodRadius; x < neighbourhoodRadius + 1; x++) {
@@ -538,8 +568,9 @@ public class TerrainManager : MonoBehaviour {
                 if (x == 0 && y == 0){
                  neighbours[index] = new Color (centreCell.r * (1.0f/4.0f), centreCell.g * (1.0f/4.0f), centreCell.b * (1.0f/4.0f));   
                 }
-                else if (xCoord + x >= 0 && xCoord < SIZE_FULL && yCoord + y >= 0 && yCoord < SIZE_FULL) {
-                    Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord + x, yCoord + y);
+                else if (xCoord + x >= 0 && xCoord + x < SIZE_FULL && yCoord + y >= 0 && yCoord + y < SIZE_FULL) {
+                    Color neighbourWeight = terrainTypeGrid[xCoord + x, yCoord + y];
+                    //Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord + x, yCoord + y);
                     int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
                     for (int i = 0; i < distance; i++) {
                         if (i + 1 == distance) {
@@ -550,7 +581,8 @@ public class TerrainManager : MonoBehaviour {
                     }
                     neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier);
                 } else {
-                    Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord, yCoord);
+                    Color neighbourWeight = terrainTypeGrid[xCoord, yCoord];
+                    //Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord, yCoord);
                     int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
                     for (int i = 0; i < distance; i++) {
                         if (i + 1 == distance) {
@@ -581,13 +613,13 @@ public class TerrainManager : MonoBehaviour {
         for (int i = 0; i < inputMapTexture.width; i++) {
             for (int j = 0; j < inputMapTexture.height; j++) {
                 if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
-                    inputMapTexture.SetPixel (i, j, new Color (0, 0, 0, 1));
+                    inputMapGrid[i, j] = new Color (0, 0, 0, 1);
                 } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
-                    inputMapTexture.SetPixel (i, j, new Color (0, 0, 1.0f, 0));
+                    inputMapGrid[i, j] = new Color (0, 0, 1.0f, 0);
                 } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {
-                    inputMapTexture.SetPixel (i, j, new Color (0, 1.0f, 0, 0));
+                    inputMapGrid[i, j] = new Color (0, 1.0f, 0, 0);
                 } else {
-                    inputMapTexture.SetPixel (i, j, new Color (1.0f, 0, 0, 0));
+                    inputMapGrid[i, j] = new Color (1.0f, 0, 0, 0);
                 }
             }
         }
