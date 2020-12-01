@@ -15,6 +15,8 @@ public class WaterManager : MonoBehaviour
     private float MIN_WATER_THRESHOLD = 0.53f;
     private float MAX_WATER_THRESHOLD = 0.70f;
 
+    private GameObject terraineManagerGO;
+
     public int row, col;
 
     public TextAsset imageAsset;
@@ -47,8 +49,14 @@ public class WaterManager : MonoBehaviour
 
         pixelData2D = new Color32[row,col];
 
-        Debug.Log("waterTex size = (" + row + ", " +col + ")");
-        
+
+        // TEST
+        //terrainObj = terrainObject.GetComponent();
+
+        //Debug.Log("waterTex size = (" + row + ", " +col + ")");
+
+        //Debug.Log("HELLO")
+
         int x = 0;
         int y = -1;
        
@@ -71,6 +79,18 @@ public class WaterManager : MonoBehaviour
         //findWater();        // this is originally used for the 20x20 pixel array that Jacob created (now defunct)
         findWaterFrom4D();    // this is the 2nd version which looks at Vector4D and determines if this is indeed water based on 4D weights in the array
         //drawTerrain();
+    }
+
+    // alex data go here and manipulate
+    public void initialize()
+    {
+        Debug.Log("WaterManger.initialize");
+    }
+
+    public float[,] applyWaterHeights(float[,] perlinNoiseArrayFinalized)
+    {
+        Debug.Log("WaterManger.applyWaterHeights");
+        return perlinNoiseArrayFinalized;
     }
 
     public void drawTerrain()
@@ -115,7 +135,7 @@ public class WaterManager : MonoBehaviour
     */
     public void findWater()
     {
-        Debug.Log("col = " + col + " :: row = " + row);
+        //Debug.Log("col = " + col + " :: row = " + row);
 
         for (int x = 0; x < col; x++)
         {
@@ -139,7 +159,7 @@ public class WaterManager : MonoBehaviour
         }
         
         float weightAvg = getWeightAverageAt(11,16, 5);
-        Debug.Log("WEIGHT VALUE AT 11,16 = " + weightAvg);
+        //Debug.Log("WEIGHT VALUE AT 11,16 = " + weightAvg);
     }
 
     /*
@@ -161,7 +181,7 @@ public class WaterManager : MonoBehaviour
             // traverses from around the target x,y like a snake and gets weighted values
             for(int k=(x-j)+1; k < (x+j)+1; k++)
             {
-                Debug.Log("GO TOP LEFT TO TOP RIGHT ///////////////////// @ " + k + "," + (y+j));
+                //Debug.Log("GO TOP LEFT TO TOP RIGHT ///////////////////// @ " + k + "," + (y+j));
                 try
                 {
                     Color32 col32 = pixelData2D[k, y + j];
@@ -173,7 +193,7 @@ public class WaterManager : MonoBehaviour
 
             for(int k=(y+j)-1; k > (y-j)-1; k--)
             {
-                Debug.Log("GO TOP RIGHT TO BOTTOM RIGHT  ///////////////////// @ " + (x+j) + "," + k);
+                //Debug.Log("GO TOP RIGHT TO BOTTOM RIGHT  ///////////////////// @ " + (x+j) + "," + k);
                 try
                 {
                     Color32 col32 = pixelData2D[x+j, k];
@@ -185,7 +205,7 @@ public class WaterManager : MonoBehaviour
 
             for (int k = (x + j)-1; k > (x-j)-1; k--)
             {
-                Debug.Log("GO BOTTOM RIGHT TO BOTTOM LEFT  ///////////////////// @ " + k + "," + (y-j));
+                //Debug.Log("GO BOTTOM RIGHT TO BOTTOM LEFT  ///////////////////// @ " + k + "," + (y-j));
                 try
                 {
                     Color32 col32 = pixelData2D[k, y - j];
@@ -197,7 +217,7 @@ public class WaterManager : MonoBehaviour
 
             for (int k = (y - j)+1; k < (y + j) + 1; k++)
             {
-                Debug.Log("GO BOTTOM LEFT TO TOP LEFT  ///////////////////// @ " + (x-j) + "," + k);
+                //Debug.Log("GO BOTTOM LEFT TO TOP LEFT  ///////////////////// @ " + (x-j) + "," + k);
                 try
                 {
                     Color32 col32 = pixelData2D[x-j, k];
@@ -208,7 +228,7 @@ public class WaterManager : MonoBehaviour
             }
             
             finalWeightAvg += (weightSum / numPx);
-            Debug.Log(j + " finalWeightAvg = " + finalWeightAvg);
+            //Debug.Log(j + " finalWeightAvg = " + finalWeightAvg);
         }
 
         return finalWeightAvg;
