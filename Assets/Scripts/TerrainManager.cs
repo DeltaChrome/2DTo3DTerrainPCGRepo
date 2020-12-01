@@ -26,7 +26,8 @@ public class TerrainManager : MonoBehaviour {
     Texture2D terrainTypeTexture;
 
     // Variables for the terrain type blending 
-    public Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
+    public Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];//<-- USE THIS FOR TERRAIN COLOURS
+
     public int terrainBorderShiftMod = 200;
     private int neighbourhoodRadius = 2;
 
@@ -39,6 +40,7 @@ public class TerrainManager : MonoBehaviour {
     // Perlin Noise Arrays.
     float[, ] perlinNoiseArray = new float[(int) SIZE_FULL, (int) SIZE_FULL];
     float[, ] perlinNoiseArrayMPass = new float[(int) SIZE_FULL, (int) SIZE_FULL];
+    float[,] perlinNoiseArrayMBasePass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     //To be accessed by Water Manager
     float[, ] perlinNoiseArrayFinalized = new float[(int) SIZE_FULL, (int) SIZE_FULL];
@@ -71,11 +73,11 @@ public class TerrainManager : MonoBehaviour {
         ClearNoise (perlinNoiseArrayFinalized);
         ClearNoise (perlinNoiseArrayCell);
 
+        //Create Terrain Type Grid
+        InitTerrainTypeGrid();
+
         //Create Noise functions and merge them
         CreateHeightArray (); //Result is a filled perlinNoiseArrayFinalized array
-
-        //Create Terrain Type Grid
-        InitTerrainTypeGrid ();
 
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
@@ -123,11 +125,27 @@ public class TerrainManager : MonoBehaviour {
         //Merge noise functions
         for (int y = 0; y < SIZE_FULL; y++) {
             for (int x = 0; x < SIZE_FULL; x++) {
-                if (perlinNoiseArrayMPass[x, y] < perlinNoiseArray[x, y]) {
+
+                //print(terrainTypeGrid[x, y].a);
+
+                //terrainTypeGrid
+                if (terrainTypeGrid[x, y].a < perlinNoiseArray[x, y])
+                {
                     perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
 
-                } else {
-                    perlinNoiseArrayFinalized[x, y] = perlinNoiseArrayMPass[x, y];
+                }
+                //Probably need to replace MBasePass with the mountain terrain type grid(I think)
+                //if (perlinNoiseArrayMBasePass[x, y] < perlinNoiseArray[x, y])
+                //{
+                //    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
+
+                //}
+                else
+                {
+
+
+
+                    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y];
 
                 }
 
@@ -224,60 +242,169 @@ public class TerrainManager : MonoBehaviour {
     void CreateMountains () {
 
         float frequency = 100.0f;
+        float frequency2 = 10.0f;
+
         float noiseValue = 0.0f;
+        float noiseValue2 = 0.0f;
 
-        float mountainXOffset = Random.Range (0.0f, 99999.0f);
-        float mountainYOffset = Random.Range (0.0f, 99999.0f);
+        float mountainXOffset = Random.Range(0.0f, 99999.0f);
+        float mountainXOffset2 = Random.Range(0.0f, 99999.0f);
+        float mountainYOffset = Random.Range(0.0f, 99999.0f);
+        float mountainYOffset2 = Random.Range(0.0f, 99999.0f);
 
-        List<int> xPointsMountainPeak = new List<int> ();
-        List<int> yPointsMountainPeak = new List<int> ();
+        List<int> xPointsMountainPeak = new List<int>();
+        List<int> yPointsMountainPeak = new List<int>();
+        //List<int> pointNumMountainPeak = new List<int> ();
+
+        List<int> pointGroupMountainPeak = new List<int>();
 
         int numPoints = 0;
 
         //frequency = Random.Range(6.0f, 8.0f);
-        for (int y = 0; y < SIZE_FULL; y++) {
-            for (int x = 0; x < SIZE_FULL; x++) {
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
 
-                float xCoord = ((float) x / SIZE_FULL) * frequency + mountainXOffset;
-                float yCoord = ((float) y / SIZE_FULL) * frequency + mountainYOffset;
+                float xCoord = ((float)x / SIZE_FULL) * frequency + mountainXOffset;
+                float xCoord2 = ((float)x / SIZE_FULL) * frequency2 + mountainXOffset2;
+                float yCoord = ((float)y / SIZE_FULL) * frequency + mountainYOffset;
+                float yCoord2 = ((float)y / SIZE_FULL) * frequency2 + mountainYOffset2;
 
                 //perlinNoiseArrayMPass[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
 
-                if ((Mathf.PerlinNoise (xCoord, yCoord) >= 0.95f)) {
+                if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.95f))
+                {
 
-                    if (numPoints == 0) {
+                    if (numPoints == 0)
+                    {
 
-                        xPointsMountainPeak.Add (x);
-                        yPointsMountainPeak.Add (y);
+                        xPointsMountainPeak.Add(x);
+                        yPointsMountainPeak.Add(y);
 
                         //Increment number of points
                         numPoints += 1;
-                    } else if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) > 15) {
-                        if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) < 200 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) < 200) {
-                            //print("num points 0, in loop");
-
-                            xPointsMountainPeak.Add (x);
-                            yPointsMountainPeak.Add (y);
+                    }
+                    else if (Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) > 15)
+                    {
+                        //if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) < 200 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) < 200) {
+                        //print("num points 0, in loop");
+                        if(terrainTypeGrid[x, y].a != 0)
+                        {
+                            xPointsMountainPeak.Add(x);
+                            yPointsMountainPeak.Add(y);
                             //Increment number of points
                             numPoints += 1;
                         }
+                     
+                        //}
 
                     }
                     //}
-                } else {
+                }
+                else
+                {
                     perlinNoiseArrayMPass[x, y] = 0;
                     //perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
+
+                }
+
+                if (Mathf.PerlinNoise(xCoord2, yCoord2) >= 0.05)
+                {
+                    perlinNoiseArrayMBasePass[x, y] = Mathf.PerlinNoise(xCoord2, yCoord2);
+
+                }
+                else
+                {
+                    perlinNoiseArrayMBasePass[x, y] = 0;
 
                 }
 
             }
         }
 
-        print ("size of points: " + xPointsMountainPeak.Count);
+        print("size of points: " + xPointsMountainPeak.Count);
 
-        for (int i = 0; i < numPoints - 1; i++) {
-            connectMountainPeaks (xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[i + 1], yPointsMountainPeak[i + 1]);
+        //Cluster mountain points
+        /* pre- Cull all points that aren't in a mountain tile
+         * 1. Take each point and compare the distance to every other point
+         * 2. For any given point, store its neighbours based on a radius - how?
+         * 3. 
+         * 
+         * 
+         * 
+         * 
+         * 
+         *
+         */
+
+        //increment group number once a point cannot be connected to another point
+        int groupNum = 0;
+
+
+        for (int y = 0; y < xPointsMountainPeak.Count; y++)
+        {
+            for (int x = 0; x < xPointsMountainPeak.Count; x++)
+            {
+
+                //for (int z = 0; z < xPointsMountainPeak.Count; z++)
+                //{
+                //    //If the point is within distance to another point
+                //    if()
+                //    {
+
+                //    }
+                //}
+
+
+            }
         }
+
+        float tempx;
+        float tempy;
+        float previousSmallestDist = 2000;
+        float previousSmallestDist2 = 2000;
+        int smallestPoint = 0;
+        int smallestPoint2 = 0;
+
+        for (int i = 0; i < xPointsMountainPeak.Count; i++)
+        {
+            for (int j = 0; j < xPointsMountainPeak.Count; j++)
+            {
+                tempx = Mathf.Abs(xPointsMountainPeak[j] - xPointsMountainPeak[i]);
+                tempy = Mathf.Abs(yPointsMountainPeak[j] - yPointsMountainPeak[i]);
+
+                if (Mathf.Abs(tempx + tempy) < previousSmallestDist && j != i)
+                {
+                    print("Smallest Distance: " + Mathf.Abs(tempx + tempy));
+
+                    previousSmallestDist = Mathf.Abs(tempx + tempy);
+                    smallestPoint = j;
+                }
+                else if (Mathf.Abs(tempx + tempy) < previousSmallestDist2 && j != i)
+                {
+                    print("2nd Smallest Distance: " + Mathf.Abs(tempx + tempy));
+
+                    previousSmallestDist2 = Mathf.Abs(tempx + tempy);
+                    smallestPoint2 = j;
+
+                }
+
+            }
+
+            //print(i);
+            connectMountainPeaks(xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[smallestPoint], yPointsMountainPeak[smallestPoint]);
+            connectMountainPeaks(xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[smallestPoint2], yPointsMountainPeak[smallestPoint2]);
+            previousSmallestDist = 2000;
+            previousSmallestDist2 = 2000;
+            smallestPoint = 0;
+        }
+
+        //Connect peaks
+        //for (int i = 0; i < numPoints - 1; i++)
+        //{
+        //    connectMountainPeaks(xPointsMountainPeak[i], yPointsMountainPeak[i], xPointsMountainPeak[i + 1], yPointsMountainPeak[i + 1]);
+        //}
 
     }
 
@@ -346,7 +473,7 @@ public class TerrainManager : MonoBehaviour {
         float lineGradientXNormal = x1;
         float lineGradientYNormal = y1;
 
-        float size = 80;
+        float size = 125;
 
         for (int i = 0; i <= steps; i++) {
 
@@ -427,13 +554,13 @@ public class TerrainManager : MonoBehaviour {
         }
         terrainTypeTexture.SetPixels (fillColor);
         */
-        for (int i = 0; i < SIZE_FULL; i++)
-        {
-            for (int n = 0; n < SIZE_FULL; n++)
-            {
-                terrainTypeGrid[i,n] = Color.yellow;
-            }
-        }
+        //for (int i = 0; i < SIZE_FULL; i++)
+        //{
+        //    for (int n = 0; n < SIZE_FULL; n++)
+        //    {
+        //        terrainTypeGrid[i,n] = Color.yellow;
+        //    }
+        //}
         FillAndWarpHorizBorders ();
         WarpVertBorders ();
         for (int i = 0; i < 0; i++)
@@ -472,7 +599,7 @@ public class TerrainManager : MonoBehaviour {
             float yCoord = Random.Range (0.0f, 99999.0f);
             float offset = 0;
             for (int x = 0; x < SIZE_FULL; x++) {
-                if (terrainTypeGrid[x, y] == Color.yellow) {
+                //if (terrainTypeGrid[x, y] == Color.yellow) {
                     float startPerlinWalkCoord = (Mathf.PerlinNoise (xCoord + offset, yCoord));
                     offset += 0.01f;
                     // Horizontal Border Warping
@@ -489,6 +616,7 @@ public class TerrainManager : MonoBehaviour {
                             }
                         } else {
                             for (int i = shiftValue; i < 0; i++) {
+
                                 terrainTypeGrid[x,y+i] = eyedropperColour;
                                 //terrainTypeTexture.SetPixel (x, y + i, eyedropperColour);
                             }
@@ -505,7 +633,7 @@ public class TerrainManager : MonoBehaviour {
                         terrainTypeGrid[x,y] = eyedropperColour;
                         //terrainTypeTexture.SetPixel (x, y, eyedropperColour);
                     }
-                }
+               // }
                 index++;
             }
 
@@ -613,7 +741,8 @@ public class TerrainManager : MonoBehaviour {
         for (int i = 0; i < inputMapTexture.width; i++) {
             for (int j = 0; j < inputMapTexture.height; j++) {
                 if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
-                    inputMapGrid[i, j] = new Color (0, 0, 0, 1);
+                    inputMapGrid[i, j] = new Color (0, 0, 0, 1.0f);
+                    
                 } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
                     inputMapGrid[i, j] = new Color (0, 0, 1.0f, 0);
                 } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {

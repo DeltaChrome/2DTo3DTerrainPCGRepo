@@ -724,7 +724,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 965631860}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 42.79, y: 16.89, z: 28.093}
+  m_LocalPosition: {x: 42.79, y: 49.8, z: 28.093}
   m_LocalScale: {x: 1, y: 2, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -836,8 +836,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf3debc87e10de942a3836e0c5e15c30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inputMapTexture: {fileID: 2800000, guid: 00bf9dbf005cf17458d3bc829665e67d, type: 3}
   inputMapTextureDim: 20
+  inputMapTexture: {fileID: 2800000, guid: 1217fd4657c229447b374e3b78fe1739, type: 3}
   terrainBorderShiftMod: 200
   terrainObject: {fileID: 1397282278}
   waterManagerGO: {fileID: 0}
