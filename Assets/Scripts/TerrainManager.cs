@@ -24,11 +24,11 @@ public class TerrainManager : MonoBehaviour {
 
     // Variables to adjust the Colour correction function's tolerance for minor differences in Color type property values in the input that would be unoticeable to the naked eye.
     // Determines how close to equal the RGB values need to be.
-    private float greyMountainTolerance = 0.02f;
+    private const float greyMountainTolerance = 0.02f;
     // Determines how much greater the value of blue in comparison to red and green to consider it water.
-    private float blueWaterTolerance = 0.1f;
+    private const float blueWaterTolerance = 0.1f;
     // Determines the value at which green must at least be to be considered Grassland.
-    private float greenGrasslandTolerance = 0.9f;
+    private const float greenGrasslandTolerance = 0.9f;
 
     // Variables for the terrain type blending <-- USE THIS FOR TERRAIN COLOURS
     private Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
@@ -38,7 +38,7 @@ public class TerrainManager : MonoBehaviour {
     // There is significant computational resource consumption on increasing the size of a blur, it's radius/dimensions. Consider increasing the number of passes.
     private const int boxBlurKernelDimNxN = 3;
     private const int BOX_BLUR_PASSES = 3;
-    private static bool[] doGaussAndOrBoxBlur = new bool[] { true, true };
+    private static bool[] doGaussAndOrBoxBlur = new bool[] { false, false };
     private float[, ] gaussConvBlurKernel;
     private const int gaussBlurKernelDimNxN = 3;
     private const float sigmaWeight = 0.5f;
@@ -566,18 +566,14 @@ public class TerrainManager : MonoBehaviour {
         for (int i = 0; i < inputMapTexture.width; i++) {
             for (int j = 0; j < inputMapTexture.height; j++) {
 
-                if (IsGreyMountain(inputMapTexture.GetPixel (i, j))) {
+                if (IsGreyMountain (inputMapTexture.GetPixel (i, j))) {
                     inputMapGrid[i, j] = new Color (0.0f, 0.0f, 0.0f, 1.0f);
-                } 
-                
-                else if (IsBlueWater(inputMapTexture.GetPixel (i, j))) {
+                } else if (IsBlueWater (inputMapTexture.GetPixel (i, j))) {
                     inputMapGrid[i, j] = new Color (0.0f, 0.0f, 1.0f, 0.0f);
-                } 
-                
-                else if (inputMapTexture.GetPixel (i, j).g > greenGrasslandTolerance) {
+                } else if (inputMapTexture.GetPixel (i, j).g > greenGrasslandTolerance) {
                     inputMapGrid[i, j] = new Color (0.0f, 1.0f, 0.0f, 0.0f);
-                } 
-                
+                }
+                // Currently, if the input pixel is not detected as Grassland, Water, or Mountain it will default to Forest.
                 else {
                     inputMapGrid[i, j] = new Color (1.0f, 0.0f, 0.0f, 0.0f);
                 }
@@ -586,13 +582,13 @@ public class TerrainManager : MonoBehaviour {
     }
 
     // Check if the input Color in question is a Mountain as determined by greyMountainTolerance.
-    bool IsGreyMountain(Color inputColor){
-        float lowestRGBValue = Mathf.Min(inputColor.r, inputColor.g, inputColor.b);
+    bool IsGreyMountain (Color inputColor) {
+        float lowestRGBValue = Mathf.Min (inputColor.r, inputColor.g, inputColor.b);
         return ((inputColor.r - lowestRGBValue < greyMountainTolerance) && (inputColor.g - lowestRGBValue < greyMountainTolerance) && (inputColor.b - lowestRGBValue < greyMountainTolerance));
     }
 
     // Check if the input Color in question is Water as determined by blueWaterTolerance.
-    bool IsBlueWater(Color inputColor){
+    bool IsBlueWater (Color inputColor) {
         return ((inputColor.b - inputColor.r > blueWaterTolerance) && (inputColor.b - inputColor.g > blueWaterTolerance));
     }
 
@@ -622,29 +618,33 @@ public class TerrainManager : MonoBehaviour {
                     offset += 0.01f;
                     // Horizontal Border Warping only if within bounds of terrainTypeGrid, of size SIZE_FULL * SIZE_FULL, and is determined to be a "border" cell.
                     if (y % (int) (SIZE_FULL / inputMapTextureDim) == 0 && y > 0 && y < SIZE_FULL - inputMapTextureDim) {
-                        // Sample a colour from the inputMapTexture
-                        eyedropperColour = inputMapGrid[Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
                         int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
                         // This If/Else determines which direction a border is warped; up or down. It also performs the warp terrain type assignment.
                         if (shiftValue > 0) {
+                            // Sample a colour from the inputMapTexture
+                            eyedropperColour = inputMapGrid[Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1) - 1];
                             for (int i = 0; i < shiftValue; i++) {
                                 if ((y + i) < SIZE_FULL) {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
+                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         } else {
-                            for (int i = shiftValue; i < 0; i++) {
+                            // Sample a colour from the inputMapTexture
+                            eyedropperColour = inputMapGrid[Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
+                            for (int i = shiftValue; i <= 0; i++) {
                                 if ((y + i) > 0) {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
+                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         }
-                        terrainTypeGrid[x, y] = eyedropperColour;
+                        //terrainTypeGrid[x, y] = eyedropperColour;
                     }
                     // Not on a border colouring
                     else {
                         // Sample a colour from the inputMapTexture
-                        eyedropperColour = inputMapGrid[Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
+                        eyedropperColour = inputMapGrid[Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
                         terrainTypeGrid[x, y] = eyedropperColour;
                     }
                 }
@@ -668,20 +668,24 @@ public class TerrainManager : MonoBehaviour {
                 offset += 0.01f;
                 // Vertical Border Warping only if within bounds of terrainTypeGrid, of size SIZE_FULL * SIZE_FULL, and is determined to be a "border" cell.
                 if (x % (int) (SIZE_FULL / inputMapTextureDim) == 0 && x > 0 && x < SIZE_FULL - inputMapTextureDim) {
-                    // Sample a colour from the inputMapTexture
-                    eyedropperColour = inputMapGrid[Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
                     int shiftValue = getBorderShiftValue (startPerlinWalkCoord);
                     // This If/Else determines which direction a border is warped; right or left. It also performs the warp terrain type assignment.
                     if (shiftValue > 0) {
+                        // Sample a colour from the inputMapTexture
+                        eyedropperColour = inputMapGrid[Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1) - 1, Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
                         for (int i = 0; i < shiftValue; i++) {
                             if ((x + i) < SIZE_FULL) {
                                 terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = Color.magenta;
                             }
                         }
                     } else {
-                        for (int i = shiftValue; i < 0; i++) {
+                        // Sample a colour from the inputMapTexture
+                        eyedropperColour = inputMapGrid[Mathf.Min ((int) (x / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1), Mathf.Min ((int) (y / (int) (SIZE_FULL / inputMapTextureDim)), inputMapTextureDim - 1)];
+                        for (int i = shiftValue; i <= 0; i++) {
                             if ((x + i) > 0) {
                                 terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = Color.magenta;
                             }
                         }
                     }
