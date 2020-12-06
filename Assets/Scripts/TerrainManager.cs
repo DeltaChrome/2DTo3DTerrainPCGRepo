@@ -22,6 +22,14 @@ public class TerrainManager : MonoBehaviour {
     public Texture2D inputMapTexture;
     private Color[, ] inputMapGrid;
 
+    // Variables to adjust the Colour correction function's tolerance for minor differences in Color type property values in the input that would be unoticeable to the naked eye.
+    // Determines how close to equal the RGB values need to be.
+    private float greyMountainTolerance = 0.02f;
+    // Determines how much greater the value of blue in comparison to red and green to consider it water.
+    private float blueWaterTolerance = 0.1f;
+    // Determines the value at which green must at least be to be considered Grassland.
+    private float greenGrasslandTolerance = 0.9f;
+
     // Variables for the terrain type blending <-- USE THIS FOR TERRAIN COLOURS
     private Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
     // Modifies the degree of border warping between terrain type areas
@@ -557,18 +565,35 @@ public class TerrainManager : MonoBehaviour {
     void ColorCorrectInputMap () {
         for (int i = 0; i < inputMapTexture.width; i++) {
             for (int j = 0; j < inputMapTexture.height; j++) {
-                if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
-                    inputMapGrid[i, j] = new Color (0.0f, 00.0f, 0.0f, 1.0f);
 
-                } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
+                if (IsGreyMountain(inputMapTexture.GetPixel (i, j))) {
+                    inputMapGrid[i, j] = new Color (0.0f, 0.0f, 0.0f, 1.0f);
+                } 
+                
+                else if (IsBlueWater(inputMapTexture.GetPixel (i, j))) {
                     inputMapGrid[i, j] = new Color (0.0f, 0.0f, 1.0f, 0.0f);
-                } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {
+                } 
+                
+                else if (inputMapTexture.GetPixel (i, j).g > greenGrasslandTolerance) {
                     inputMapGrid[i, j] = new Color (0.0f, 1.0f, 0.0f, 0.0f);
-                } else {
+                } 
+                
+                else {
                     inputMapGrid[i, j] = new Color (1.0f, 0.0f, 0.0f, 0.0f);
                 }
             }
         }
+    }
+
+    // Check if the input Color in question is a Mountain as determined by greyMountainTolerance.
+    bool IsGreyMountain(Color inputColor){
+        float lowestRGBValue = Mathf.Min(inputColor.r, inputColor.g, inputColor.b);
+        return ((inputColor.r - lowestRGBValue < greyMountainTolerance) && (inputColor.g - lowestRGBValue < greyMountainTolerance) && (inputColor.b - lowestRGBValue < greyMountainTolerance));
+    }
+
+    // Check if the input Color in question is Water as determined by blueWaterTolerance.
+    bool IsBlueWater(Color inputColor){
+        return ((inputColor.b - inputColor.r > blueWaterTolerance) && (inputColor.b - inputColor.g > blueWaterTolerance));
     }
 
     // terrainTypeGrid is filled with a value outside of the range of 0.0f to 1.0f to act as a flag for when a cell has not been assigned a terrain type.
@@ -585,7 +610,6 @@ public class TerrainManager : MonoBehaviour {
 
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
-        int index = 0;
 
         //Create the texture
         for (int y = 0; y < SIZE_FULL; y++) {
@@ -624,7 +648,6 @@ public class TerrainManager : MonoBehaviour {
                         terrainTypeGrid[x, y] = eyedropperColour;
                     }
                 }
-                index++;
             }
 
         }
