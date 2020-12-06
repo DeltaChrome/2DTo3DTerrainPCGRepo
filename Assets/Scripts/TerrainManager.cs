@@ -25,16 +25,16 @@ public class TerrainManager : MonoBehaviour {
     // Variables for the terrain type blending <-- USE THIS FOR TERRAIN COLOURS
     private Color[, ] terrainTypeGrid = new Color[(int) SIZE_FULL, (int) SIZE_FULL];
     // Modifies the degree of border warping between terrain type areas
-    private int terrainBorderShiftMod = 200;
+    private const int terrainBorderShiftMod = 200;
 
     // There is significant computational resource consumption on increasing the size of a blur, it's radius/dimensions. Consider increasing the number of passes.
-    public const int boxBlurKernelDimNxN = 3;
-    public const int BOX_BLUR_PASSES = 3;
-    public static bool[] doGaussAndOrBoxBlur = new bool[] { false, false };
+    private const int boxBlurKernelDimNxN = 3;
+    private const int BOX_BLUR_PASSES = 3;
+    private static bool[] doGaussAndOrBoxBlur = new bool[] { true, true };
     private float[, ] gaussConvBlurKernel;
-    public const int gaussBlurKernelDimNxN = 3;
-    public const float sigmaWeight = 0.5f;
-    public const int GAUSS_BLUR_PASSES = 3;
+    private const int gaussBlurKernelDimNxN = 3;
+    private const float sigmaWeight = 0.5f;
+    private const int GAUSS_BLUR_PASSES = 3;
 
     // Terrain type grid texture for terrainTypeMiniMap
     private Texture2D terrainTypeTexture;
