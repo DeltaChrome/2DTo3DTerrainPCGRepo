@@ -30,7 +30,7 @@ public class TerrainManager : MonoBehaviour {
     // There is significant computational resource consumption on increasing the size of a blur, it's radius/dimensions. Consider increasing the number of passes.
     public const int boxBlurKernelDimNxN = 3;
     public const int BOX_BLUR_PASSES = 3;
-    public static bool[] doGaussAndOrBoxBlur = new bool[] { true, true };
+    public static bool[] doGaussAndOrBoxBlur = new bool[] { false, false };
     private float[, ] gaussConvBlurKernel;
     public const int gaussBlurKernelDimNxN = 3;
     public const float sigmaWeight = 0.5f;
@@ -533,6 +533,7 @@ public class TerrainManager : MonoBehaviour {
 
     /* ------------------------------------------------------------------ */
     /* TERRAIN TYPE MANIPULATION */
+    /* The function implementations are ordered below as they are called. */
     /* ------------------------------------------------------------------ */
 
     // Alex's work
@@ -552,6 +553,34 @@ public class TerrainManager : MonoBehaviour {
         print ("Seconds to execute blur: " + (Time.realtimeSinceStartup - timeStart));
     }
 
+    // This basically has to exist until inputs that have *only* 4 colours are given. Currently, the provided example images do not have only 4 colours.
+    void ColorCorrectInputMap () {
+        for (int i = 0; i < inputMapTexture.width; i++) {
+            for (int j = 0; j < inputMapTexture.height; j++) {
+                if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
+                    inputMapGrid[i, j] = new Color (0.0f, 00.0f, 0.0f, 1.0f);
+
+                } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
+                    inputMapGrid[i, j] = new Color (0.0f, 0.0f, 1.0f, 0.0f);
+                } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {
+                    inputMapGrid[i, j] = new Color (0.0f, 1.0f, 0.0f, 0.0f);
+                } else {
+                    inputMapGrid[i, j] = new Color (1.0f, 0.0f, 0.0f, 0.0f);
+                }
+            }
+        }
+    }
+
+    // terrainTypeGrid is filled with a value outside of the range of 0.0f to 1.0f to act as a flag for when a cell has not been assigned a terrain type.
+    void SetupTerrainTypeGridUntextured () {
+        for (int i = 0; i < SIZE_FULL; i++) {
+            for (int n = 0; n < SIZE_FULL; n++) {
+                terrainTypeGrid[i, n] = new Color (9.9f, 9.9f, 9.9f, 9.9f);
+            }
+        }
+    }
+
+    // Fill the terrainTypeGrid with values corresponding to the inputMapGrid and warp the shape of the horizontal borders between the terrain types.
     void FillAndWarpHorizBorders () {
 
         Color eyedropperColour;
@@ -575,11 +604,15 @@ public class TerrainManager : MonoBehaviour {
                         // This If/Else determines which direction a border is warped; up or down. It also performs the warp terrain type assignment.
                         if (shiftValue > 0) {
                             for (int i = 0; i < shiftValue; i++) {
-                                terrainTypeGrid[x, y + i] = eyedropperColour;
+                                if ((y + i) < SIZE_FULL) {
+                                    terrainTypeGrid[x, y + i] = eyedropperColour;
+                                }
                             }
                         } else {
                             for (int i = shiftValue; i < 0; i++) {
-                                terrainTypeGrid[x, y + i] = eyedropperColour;
+                                if ((y + i) > 0) {
+                                    terrainTypeGrid[x, y + i] = eyedropperColour;
+                                }
                             }
                         }
                         terrainTypeGrid[x, y] = eyedropperColour;
@@ -597,6 +630,7 @@ public class TerrainManager : MonoBehaviour {
         }
     }
 
+    // Warp the shape of the vertical borders between the terrain types.
     void WarpVertBorders () {
         Color eyedropperColour;
         inputMapTextureDim = inputMapTexture.height;
@@ -617,16 +651,24 @@ public class TerrainManager : MonoBehaviour {
                     // This If/Else determines which direction a border is warped; right or left. It also performs the warp terrain type assignment.
                     if (shiftValue > 0) {
                         for (int i = 0; i < shiftValue; i++) {
-                            terrainTypeGrid[x + i, y] = eyedropperColour;
+                            if ((x + i) < SIZE_FULL) {
+                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                            }
                         }
                     } else {
                         for (int i = shiftValue; i < 0; i++) {
-                            terrainTypeGrid[x + i, y] = eyedropperColour;
+                            if ((x + i) > 0) {
+                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    int getBorderShiftValue (float perlinShiftValue) {
+        return (int) ((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
     }
 
     // Calls the function that iterates over all terrain type cells BLUR_PASSES times.
@@ -636,12 +678,12 @@ public class TerrainManager : MonoBehaviour {
         if (gaussBlurKernelDimNxN > 0) {
             CreateConvBlurKernel ();
             for (int i = 0; i < GAUSS_BLUR_PASSES; i++) {
-                terrainTypeGrid = BlurTerrainBorders (true);
+                terrainTypeGrid = BlurTerrainBorders ();
             }
             // If boxBlurKernelDimNxN is 0 or less, then we shouldn't call the box blurring function.
             if (boxBlurKernelDimNxN > 0) {
                 for (int i = 0; i < BOX_BLUR_PASSES; i++) {
-                    terrainTypeGrid = BlurTerrainBorders (false);
+                    terrainTypeGrid = BlurTerrainBorders ();
                 }
             }
 
@@ -658,17 +700,12 @@ public class TerrainManager : MonoBehaviour {
                 sumKernel += gaussConvBlurKernel[x + ((gaussBlurKernelDimNxN - 1) / 2), y + ((gaussBlurKernelDimNxN - 1) / 2)];
             }
         }
-        //print (sumKernel);
         float kernelMustBeSummedToOne = 1.0f / sumKernel;
-        float checkIfOne = 0.0f;
         for (int x = 0; x < gaussBlurKernelDimNxN; x++) {
             for (int y = 0; y < gaussBlurKernelDimNxN; y++) {
                 gaussConvBlurKernel[x, y] = gaussConvBlurKernel[x, y] * kernelMustBeSummedToOne;
-                //print (gaussConvBlurKernel[x, y]);
-                checkIfOne += gaussConvBlurKernel[x, y];
             }
         }
-        //print (checkIfOne);
     }
 
     // Given an offset location from the centre cell of the kernel, return the value for the offset location's cell using the gaussian formula.
@@ -677,7 +714,7 @@ public class TerrainManager : MonoBehaviour {
     }
 
     // Iterates over all terrain type cells calling the blur function for a single cell's kernel.
-    Color[, ] BlurTerrainBorders (bool isGaussian) {
+    Color[, ] BlurTerrainBorders () {
         Color[, ] blurTerrain = terrainTypeGrid;
         //Check if either blur type has been specified to execute. Otherwise the above blurTerrain will be returned unchanged as equal to terrainTypeGrid.
         if (doGaussAndOrBoxBlur[0] == true || doGaussAndOrBoxBlur[1] == true) {
@@ -702,8 +739,8 @@ public class TerrainManager : MonoBehaviour {
         return blurTerrain;
     }
 
+    // Returns a new Color using the weights in the built gaussConvBlurKernel[].
     Color ApplyGaussConvKernelToCell (int xCoord, int yCoord) {
-        //Color contributorToBlurEffect = new Color (0.0f, 0.0f, 0.0f, 0.0f);
         Color newWeight = new Color (0.0f, 0.0f, 0.0f, 0.0f);
         int numContributors = 0;
         for (int x = -((gaussBlurKernelDimNxN - 1) / 2); x < ((gaussBlurKernelDimNxN + 1) / 2); x++) {
@@ -716,6 +753,7 @@ public class TerrainManager : MonoBehaviour {
         return newWeight;
     }
 
+    // Returns a new Color using assumed equal weights across the kernel.
     Color ApplyBoxBlurConvKernelToCell (int xCoord, int yCoord) {
         Color newWeight = new Color (0.0f, 0.0f, 0.0f, 0.0f);
         float numContributors = 0.0f;
@@ -730,151 +768,8 @@ public class TerrainManager : MonoBehaviour {
         return newWeight / numContributors;
     }
 
-    /*
-        check double check, distance and number in ring needed or not?
-
-    */
-
-    // Calculates new weights, adding up to 1.0, in a Color deriving the new weights from the cell determined from the provided coordinates and the value of boxBlurKernelDimNxN.
-    Color CalculateNewTerrainWeight (int xCoord, int yCoord) {
-        Color centreCell = terrainTypeGrid[xCoord, yCoord];
-        Color newWeight = new Color (0.0f, 0.0f, 0.0f, 0.0f);
-        float index = 0.0f;
-        for (int x = -boxBlurKernelDimNxN; x < boxBlurKernelDimNxN + 1; x++) {
-            for (int y = -boxBlurKernelDimNxN; y < boxBlurKernelDimNxN + 1; y++) {
-
-                float weightDistanceMultiplier = 1.0f;
-                float degreeOfDistance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
-
-                if (degreeOfDistance <= 1) {
-                    weightDistanceMultiplier = 2.0f * 9.0f;
-                } else if (degreeOfDistance == boxBlurKernelDimNxN) {
-                    weightDistanceMultiplier = Mathf.Pow (2.0f, degreeOfDistance - 1) * (degreeOfDistance * 8.0f);
-                } else {
-                    weightDistanceMultiplier = Mathf.Pow (2.0f, degreeOfDistance) * (degreeOfDistance * 8.0f);
-                }
-
-                //print(weightDistanceMultiplier);
-                if (x == 0 && y == 0) {
-
-                    newWeight.r += (centreCell.r / weightDistanceMultiplier);
-                    newWeight.g += (centreCell.g / weightDistanceMultiplier);
-                    newWeight.b += (centreCell.b / weightDistanceMultiplier);
-                    newWeight.a += (centreCell.a / weightDistanceMultiplier);
-
-                    //newWeight = new Color ((centreCell.r / weightDistanceMultiplier) + newWeight.r, (centreCell.g / weightDistanceMultiplier) + newWeight.g, (centreCell.b / weightDistanceMultiplier) + newWeight.b, (centreCell.a / weightDistanceMultiplier) + newWeight.a);
-                    index++;
-                } else
-                if (xCoord + x >= 0 && xCoord + x < SIZE_FULL && yCoord + y >= 0 && yCoord + y < SIZE_FULL) {
-                    /*
-                    Color neighbourWeight = terrainTypeGrid[xCoord + x, yCoord + y];
-                    newWeight.r += (neighbourWeight.r);
-                    newWeight.g += (neighbourWeight.g);
-                    newWeight.b += (neighbourWeight.b);
-                    newWeight.a += (neighbourWeight.a);;
-                    */
-                    Color neighbourWeight = terrainTypeGrid[xCoord + x, yCoord + y];
-                    newWeight.r += (neighbourWeight.r / weightDistanceMultiplier);
-                    newWeight.g += (neighbourWeight.g / weightDistanceMultiplier);
-                    newWeight.b += (neighbourWeight.b / weightDistanceMultiplier);
-                    newWeight.a += (neighbourWeight.a / weightDistanceMultiplier);
-
-                    //newWeight = new Color ((neighbourWeight.r / weightDistanceMultiplier) + newWeight.r, (neighbourWeight.g / weightDistanceMultiplier) + newWeight.g, (neighbourWeight.b / weightDistanceMultiplier) + newWeight.b, (neighbourWeight.a / weightDistanceMultiplier) + newWeight.a);
-                    index++;
-                } else {
-
-                    newWeight.r += (centreCell.r / weightDistanceMultiplier);
-                    newWeight.g += (centreCell.g / weightDistanceMultiplier);
-                    newWeight.b += (centreCell.b / weightDistanceMultiplier);
-                    newWeight.a += (centreCell.a / weightDistanceMultiplier);
-
-                    //newWeight = new Color ((centreCell.r / weightDistanceMultiplier) + newWeight.r, (centreCell.g / weightDistanceMultiplier) + newWeight.g, (centreCell.b / weightDistanceMultiplier) + newWeight.b, (centreCell.a / weightDistanceMultiplier) + newWeight.a);
-                }
-            }
-        }
-        /* 
-        newWeight.r = newWeight.r / index;
-        newWeight.g = newWeight.g / index;
-        newWeight.b = newWeight.b / index;
-        newWeight.a = newWeight.a / index;
-        */
-        /*
-                int index = 0;
-                for (int x = -boxBlurKernelDimNxN; x < boxBlurKernelDimNxN + 1; x++) {
-                    for (int y = -boxBlurKernelDimNxN; y < boxBlurKernelDimNxN + 1; y++) {
-                        float weightDistanceMultiplier = (3.0f / 4.0f);
-                        if (x == 0 && y == 0) {
-                            neighbours[index] = new Color (centreCell.r * (1.0f / 4.0f), centreCell.g * (1.0f / 4.0f), centreCell.b * (1.0f / 4.0f), centreCell.a * (1.0f / 4.0f));
-                        } else if (xCoord + x >= 0 && xCoord + x < SIZE_FULL && yCoord + y >= 0 && yCoord + y < SIZE_FULL) {
-                            Color neighbourWeight = terrainTypeGrid[xCoord + x, yCoord + y];
-                            //Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord + x, yCoord + y);
-                            int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
-                            for (int i = 0; i < distance; i++) {
-                                if (i + 1 == distance) {
-                                    weightDistanceMultiplier = weightDistanceMultiplier / (8 * distance);
-                                } else {
-                                    weightDistanceMultiplier = (3.0f / 4.0f) * weightDistanceMultiplier;
-                                }
-                            }
-                            neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier, neighbourWeight.a * weightDistanceMultiplier);
-                        } else {
-                            Color neighbourWeight = terrainTypeGrid[xCoord, yCoord];
-                            //Color neighbourWeight = terrainTypeTexture.GetPixel (xCoord, yCoord);
-                            int distance = Mathf.Max (Mathf.Abs (x), Mathf.Abs (y));
-                            for (int i = 0; i < distance; i++) {
-                                if (i + 1 == distance) {
-                                    weightDistanceMultiplier = weightDistanceMultiplier / (8 * distance);
-                                } else {
-                                    weightDistanceMultiplier = (3.0f / 4.0f) * weightDistanceMultiplier;
-                                }
-                            }
-                            neighbours[index] = new Color (neighbourWeight.r * weightDistanceMultiplier, neighbourWeight.g * weightDistanceMultiplier, neighbourWeight.b * weightDistanceMultiplier, neighbourWeight.a * weightDistanceMultiplier);
-                        }
-                        index++;
-                    }
-                }
-        
-                Color newWeight = new Color (0, 0, 0, 0);
-                foreach (Color contributingColor in neighbours) {
-                    newWeight = new Color (newWeight.r + contributingColor.r, newWeight.g + contributingColor.g, newWeight.b + contributingColor.b, newWeight.a + contributingColor.a);
-                }
-                */
-        return newWeight;
-    }
-
-    int getBorderShiftValue (float perlinShiftValue) {
-        return (int) ((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
-    }
-
-    // This basically has to exist until inputs that have *only* 4 colours are given. Currently, the provided example images do not have only 4 colours.
-    void ColorCorrectInputMap () {
-        for (int i = 0; i < inputMapTexture.width; i++) {
-            for (int j = 0; j < inputMapTexture.height; j++) {
-                if (inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).g && inputMapTexture.GetPixel (i, j).r == inputMapTexture.GetPixel (i, j).b) {
-                    inputMapGrid[i, j] = new Color (0.0f, 00.0f, 0.0f, 1.0f);
-
-                } else if (inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).r && inputMapTexture.GetPixel (i, j).b > inputMapTexture.GetPixel (i, j).g) {
-                    inputMapGrid[i, j] = new Color (0.0f, 0.0f, 1.0f, 0.0f);
-                } else if (inputMapTexture.GetPixel (i, j).g > 0.9f) {
-                    inputMapGrid[i, j] = new Color (0.0f, 1.0f, 0.0f, 0.0f);
-                } else {
-                    inputMapGrid[i, j] = new Color (1.0f, 0.0f, 0.0f, 0.0f);
-                }
-            }
-        }
-    }
-
-    // terrainTypeGrid is filled with a value outside of the range of 0.0f to 1.0f to act as a marker for when a cell has not been assigned a terrain type.
-    void SetupTerrainTypeGridUntextured () {
-        for (int i = 0; i < SIZE_FULL; i++) {
-            for (int n = 0; n < SIZE_FULL; n++) {
-                terrainTypeGrid[i, n] = new Color (9.9f, 9.9f, 9.9f, 9.9f);
-            }
-        }
-    }
-
     /* ------------------------------------------------------------------ */
-    /* GETTERS & SETTERS START */
+    /* GETTERS & SETTERS */
     /* ------------------------------------------------------------------ */
 
     public Texture2D GetTerrainTypeTexture () {
@@ -911,7 +806,7 @@ public class TerrainManager : MonoBehaviour {
             Box Blur, take all values, add them up, divide by number of contributors
             Gaussian Blur, Bell shape distribution centered on a pixel
             https://www.ronja-tutorials.com/2018/08/27/postprocessing-blur.html
-    
+        
 
             https://stackoverflow.com/questions/98359/fastest-gaussian-blur-implementation
 
