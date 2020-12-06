@@ -38,6 +38,7 @@ public class TerrainManager : MonoBehaviour {
     // There is significant computational resource consumption on increasing the size of a blur, it's radius/dimensions. Consider increasing the number of passes.
     private const int boxBlurKernelDimNxN = 3;
     private const int BOX_BLUR_PASSES = 3;
+    // First bool is a flag for the Gaussian blur, the second is for Box blur.
     private static bool[] doGaussAndOrBoxBlur = new bool[] { false, false };
     private float[, ] gaussConvBlurKernel;
     private const int gaussBlurKernelDimNxN = 3;
@@ -838,6 +839,8 @@ public class TerrainManager : MonoBehaviour {
             https://stackoverflow.com/questions/98359/fastest-gaussian-blur-implementation
 
             http://blog.ivank.net/fastest-gaussian-blur.html
+
+            https://github.com/mdymel/superfastblur/blob/master/SuperfastBlur/GaussianBlur.cs
 
             **/
 }
