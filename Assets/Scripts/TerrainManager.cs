@@ -81,8 +81,8 @@ public class TerrainManager : MonoBehaviour {
         terrainTypeTexture = new Texture2D ((int) SIZE_FULL, (int) SIZE_FULL);
 
         //Call Water Manager
-        //waterManager = new GameObject ().AddComponent (typeof (WaterManager)) ///as WaterManager;
-        //waterManager.name = "WaterManager";
+        waterManager = new GameObject().AddComponent(typeof(WaterManager)) as WaterManager;
+        waterManager.name = "WaterManager";
 
         ClearNoise (perlinNoiseArray);
         ClearNoise (perlinNoiseArrayMPass);
@@ -97,14 +97,17 @@ public class TerrainManager : MonoBehaviour {
 
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
-        //waterManager.Init(TerrainTypeGridTHINGY)
-        //perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized)
+        waterManager.initialize((int)SIZE_FULL, terrainTypeGrid);
+        perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized);
 
         //Create Textures for Grids
         GenerateMapsGUI ();
 
         //Call Terrain creation functions
         GenerateTerrain ();
+
+        // WaterManager AGAIN
+        waterManager.createWaterPlanes(terrainComponent);
 
         //Call Agent Manager
 
