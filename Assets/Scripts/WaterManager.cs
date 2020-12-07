@@ -32,7 +32,6 @@ public class WaterManager : MonoBehaviour
     private Color32[,] pixelData2D;                      // 2D array of the image data (yes that's how you declare a 2D arr)
     private Color32[,] pixelTest = new Color32[3,3];     // for debug
 
-
     void Awake()
     {
         print("---------- WaterManager :: Awakened");
@@ -58,10 +57,11 @@ public class WaterManager : MonoBehaviour
         print("---------- WaterManager :: initialize");
 
         // ### make sure texture is read/write enabled! (go to the texture in your resources and find it in the advance dropdown)
-        waterTex = Resources.Load<Texture2D>(testImage);
+        //waterTex = Resources.Load<Texture2D>(testImage);
+        //SIZE_FULL = waterTex.width;     // assuming that the grid size will always be a perfect square
 
-        SIZE_FULL = waterTex.width;     // assuming that the grid size will always be a perfect square
-        
+        SIZE_FULL = 2049;
+        /*
         colDataDummy = new Color[waterTex.width, waterTex.height];
 
         int row = -1;
@@ -82,6 +82,7 @@ public class WaterManager : MonoBehaviour
 
             colDataDummy[row, col] = waterTex.GetPixels()[i];
         }
+        */
 
         // find shoreline between these percentage values of water
         // small sample cuz it be foreva
@@ -93,8 +94,8 @@ public class WaterManager : MonoBehaviour
         {
             for (int y = 0; y < SIZE_FULL; y++)
             {
-                //checkForWaterRegion(x, y, terrainTypeGrid[x, y]);     // ### FOR PRODUCTION!!
-                checkForWaterRegion(x, y, colDataDummy[x, y]);     // ### FOR DEBUGGING!!
+                checkForWaterRegion(x, y, terrainTypeGrid[x, y]);     // ### FOR PRODUCTION!!
+                //checkForWaterRegion(x, y, colDataDummy[x, y]);     // ### FOR DEBUGGING!!
             }
         }
     }
@@ -140,30 +141,30 @@ public class WaterManager : MonoBehaviour
      * @Info: creates the water planes to simulate bodies of water
      */
     public void createWaterPlanes(Terrain terrainComp)
-    { 
+    {
         float terrainHeight = terrainComp.terrainData.GetHeight(allWater[0].x, allWater[0].y);
         //float bodyWaterX = terrainComp.terrainData.bounds.center[0];
         //float bodyWaterY = terrainComp.terrainData.bounds.center[2];
         float bodyWaterX = 48.0f;
         float bodyWaterY = 52.0f;
-
+        
         print("TERRAIN HEIGHT AT 0,0 = " + terrainHeight);
         print("TERRAIN BOUNDS MIN = " + terrainComp.terrainData.bounds.min);
         print("TERRAIN BOUNDS MAX = " + terrainComp.terrainData.bounds.max);
         print("TERRAIN BOUNDS CENTER = " + terrainComp.terrainData.bounds.center);
         print("TERRAIN BOUNDS SIZE = " + terrainComp.terrainData.bounds.size);
-
+       
         GameObject waterPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
 
         // hard code the scale values for now during testing (you'll need to adapt it for the whole 2049x2049 later...)
         // DO NEXT :: DON'T SCALE IT, JUST CREATE A QUAD BASED ON COORDS AT SIZE_FULL
-        waterPlane.transform.localScale = new Vector3(10.0f, 1.0f, 10.0f);
+        waterPlane.transform.localScale = new Vector3(100.0f, 1.0f, 100.0f);
         waterPlane.transform.position = new Vector3(bodyWaterX, terrainHeight + 0.01f, bodyWaterY);
         
         Renderer waterMaterial = waterPlane.GetComponent<Renderer>(); // grab the renderer component on the plane
         waterMaterial.material.SetColor("_Color", new Color(0.0f,0.0f,1.0f,0.3f));
         
-        waterPlanes.Add(waterPlane);
+        waterPlanes.Add(waterPlane); 
     }
 
 
@@ -226,7 +227,7 @@ public class WaterManager : MonoBehaviour
             //wObj.init(x, y, "grass", cData.g);
             wObj.init(x, y, "grass", cData.b);
         }
-        else
+        else if(cData.a >= 0.8f)        // play with this value later
         {
             print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
             //wObj.init(x, y, "mountain", cData.a);
