@@ -836,12 +836,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf3debc87e10de942a3836e0c5e15c30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inputMapTextureDim: 20
-  inputMapTexture: {fileID: 2800000, guid: 1217fd4657c229447b374e3b78fe1739, type: 3}
-  terrainBorderShiftMod: 200
+  inputMapTexture: {fileID: 2800000, guid: 00bf9dbf005cf17458d3bc829665e67d, type: 3}
   terrainObject: {fileID: 1397282278}
   waterManagerGO: {fileID: 0}
   waterManager: {fileID: 0}
+  agentManager: {fileID: 0}
 --- !u!4 &1465285532
 Transform:
   m_ObjectHideFlags: 0
@@ -872,7 +871,15 @@ MonoBehaviour:
   - name: Trees
     density: 6
     prefabs:
-    - {fileID: 345391095}
+    - {fileID: 4470068468865549885, guid: 06573cc19fb2e4a479092a9b4687b26c, type: 3}
+  - name: Trees
+    density: 6
+    prefabs:
+    - {fileID: 4867889463058203156, guid: f550c80a288252347bddcb7465dc52df, type: 3}
+  - name: Trees
+    density: 6
+    prefabs:
+    - {fileID: 6573723043079136192, guid: ed18eacbf5bb4514d8a6b7a36c669520, type: 3}
   elementSize: 25
   elementSpacing: 3
   terrain: {fileID: 1397282280}
