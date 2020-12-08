@@ -40,7 +40,7 @@ public class TerrainManager : MonoBehaviour
     private const int boxBlurKernelDimNxN = 3;
     private const int BOX_BLUR_PASSES = 25;
     // First bool is a flag for the Gaussian blur, the second is for Box blur.
-    private static bool[] doGaussAndOrBoxBlur = new bool[] { false, true };
+    private static bool[] doGaussAndOrBoxBlur = new bool[] { false, false };
     private float[,] gaussConvBlurKernel;
     private const int gaussBlurKernelDimNxN = 3;
     private const float sigmaWeight = 0.5f;
@@ -1002,6 +1002,75 @@ public class TerrainManager : MonoBehaviour
             }
         }
         return newWeight / numContributors;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* IVAN KUTSKIR ADAPTED "GAUSSIAN" BLUR */
+    /* ------------------------------------------------------------------ */
+    // http://blog.ivank.net/fastest-gaussian-blur.html
+
+
+    int[] BoxesForGauss(float sigma, int numBoxes){
+        int wl = (int) Mathf.Floor(Mathf.Sqrt((12*sigma*sigma/numBoxes)+1));
+        if (wl % 2 == 0){
+            wl--;
+        }
+        int wu = wl + 2;
+
+        int m = (int) Mathf.Round((12*sigma*sigma - numBoxes*wl*wl - 4*numBoxes*wl - 3*numBoxes)/(-4*wl-4));
+
+        int[] dimOfBoxes = new int[numBoxes];
+        for (int i = 0; i < numBoxes; i++)
+        {
+            if (i < m){
+                dimOfBoxes[i] =wl;
+            } else {
+                dimOfBoxes[i] =wu;
+            }
+        }
+        return dimOfBoxes;
+    }
+
+    Color[] FlattenTerrainArray(Color[,] array2D){
+        Color[] flattenedArray = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            for (int n = 0; n < (int)SIZE_FULL; n++)
+            {
+                flattenedArray[i*(int)SIZE_FULL+n] = array2D[i,n];
+            }
+        }
+        return flattenedArray;
+    }
+
+    void PseudoGaussBlur(){
+        Color[,] blurTerrain = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
+        int[] boxKernelDims = BoxesForGauss(sigmaWeight, 3);
+        for (int i = 0; i < 4; i++)
+        {
+            terrainTypeGrid = PseudoGaussBlurOneColour(i, blurTerrain);
+        }
+    }
+
+    Color[,] PseudoGaussBlurOneColour(int colour, Color[,] tcl){
+        return tcl;
+    }
+
+    void PseudoGausBlurTotal(Color[] flatArray){
+        for (int i = 0; i < flatArray.Length; i++)
+        {
+            
+        }
+        PseudoGaussBlurHor();
+        PseudoGaussBlurVert();
+    }
+
+    void PseudoGaussBlurHor(){
+
+    }
+
+    void PseudoGaussBlurVert(){
+
     }
 
     /* ------------------------------------------------------------------ */
