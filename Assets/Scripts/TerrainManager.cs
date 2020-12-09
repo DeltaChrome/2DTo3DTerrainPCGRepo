@@ -102,8 +102,8 @@ public class TerrainManager : MonoBehaviour
 
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
-        //waterManager.initialize((int)SIZE_FULL, terrainTypeGrid);
-        //perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized);
+        waterManager.initialize((int)SIZE_FULL, terrainTypeGrid);
+        perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized);
 
         //Create Textures for Grids
         GenerateMapsGUI();
@@ -112,7 +112,7 @@ public class TerrainManager : MonoBehaviour
         GenerateTerrain();
 
         // WaterManager AGAIN
-        //waterManager.createWaterPlanes(terrainComponent);
+        waterManager.createWaterPlanes(terrainComponent);
 
         //Call Agent Manager
         //agentManager.Init(terrainTypeGrid);
@@ -1096,12 +1096,12 @@ public class TerrainManager : MonoBehaviour
         source = PseudoGausBlurTotal(target, source, (boxKernelDims[1]-1.0f)/2.0f);
         target = PseudoGausBlurTotal(source, target, (boxKernelDims[2]-1.0f)/2.0f);
         terrainTypeGrid = Unflatten2DTerrainArray(target);
-        
+        /* 
         for (int i = 0; i < SIZE_FULL; i += 20)
         {
             print(terrainTypeGrid[i,0]);
         }
-        
+        */
 
     }
 

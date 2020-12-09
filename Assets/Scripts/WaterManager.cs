@@ -200,7 +200,7 @@ public class WaterManager : MonoBehaviour
             allWater.Add(wObj);
         }else
         {
-            print("Error: No Water / Shores Found");
+            //print("Error: No Water / Shores Found");
         }
     }
 
@@ -216,20 +216,20 @@ public class WaterManager : MonoBehaviour
 
         if (cData.r > cData.g && cData.b > cData.g)
         {
-            print("Must be TREE ZONE @ " + x + "," + y + " = " + cData);
+            //print("Must be TREE ZONE @ " + x + "," + y + " = " + cData);
             // can we just use the R component as the weight itself?
             //wObj.init(x, y, "forest", cData.r);
             wObj.init(x, y, "forest", cData.b);
         }
         else if (cData.g > cData.r && cData.b > cData.r)
         {
-            print("Must be GRASS @ " + x + "," + y + " = " + cData);
+            //print("Must be GRASS @ " + x + "," + y + " = " + cData);
             //wObj.init(x, y, "grass", cData.g);
             wObj.init(x, y, "grass", cData.b);
         }
         else if(cData.a >= 0.8f)        // play with this value later
         {
-            print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
+            //print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
             //wObj.init(x, y, "mountain", cData.a);
             wObj.init(x, y, "mountain", cData.b);
         }
