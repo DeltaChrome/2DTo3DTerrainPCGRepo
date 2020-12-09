@@ -43,7 +43,7 @@ public class TerrainManager : MonoBehaviour
     private static bool[] doGaussAndOrBoxBlur = new bool[] { false, true };
     private float[,] gaussConvBlurKernel;
     private const int gaussBlurKernelDimNxN = 3;
-    private const float sigmaWeight = 0.5f;
+    private const float sigmaWeight = 30.0f;
     private const int GAUSS_BLUR_PASSES = 3;
 
     // Terrain type grid texture for terrainTypeMiniMap
@@ -112,7 +112,7 @@ public class TerrainManager : MonoBehaviour
         GenerateTerrain();
 
         // WaterManager AGAIN
-        waterManager.createWaterPlanes(terrainComponent);
+        //waterManager.createWaterPlanes(terrainComponent);
 
         //Call Agent Manager
         //agentManager.Init(terrainTypeGrid);
@@ -887,21 +887,27 @@ public class TerrainManager : MonoBehaviour
         // If gaussBlurKernelDimNxN is 0 or less, then we shouldn't call the gauss blurring functions.
         if (gaussBlurKernelDimNxN > 0)
         {
-            CreateConvBlurKernel();
+            //CreateConvBlurKernel();
+        }
+
+        PseudoGaussBlur();
+            /* 
             for (int i = 0; i < GAUSS_BLUR_PASSES; i++)
             {
                 terrainTypeGrid = BlurTerrainBorders();
             }
-            // If boxBlurKernelDimNxN is 0 or less, then we shouldn't call the box blurring function.
-            if (boxBlurKernelDimNxN > 0)
+        
+        // If boxBlurKernelDimNxN is 0 or less, then we shouldn't call the box blurring function.
+        if (boxBlurKernelDimNxN > 0)
+        {
+            for (int i = 0; i < BOX_BLUR_PASSES; i++)
             {
-                for (int i = 0; i < BOX_BLUR_PASSES; i++)
-                {
-                    terrainTypeGrid = BlurTerrainBorders();
-                }
+                terrainTypeGrid = BlurTerrainBorders();
             }
-
         }
+        */
+
+        
     }
 
     // Builds a kernel of size gaussBlurKernelDimNxN * gaussBlurKernelDimNxN using the formula for gaussian kernels.
@@ -936,6 +942,7 @@ public class TerrainManager : MonoBehaviour
     // Iterates over all terrain type cells calling the blur function for a single cell's kernel.
     Color[,] BlurTerrainBorders()
     {
+        
         Color[,] blurTerrain = terrainTypeGrid;
         //Check if either blur type has been specified to execute. Otherwise the above blurTerrain will be returned unchanged as equal to terrainTypeGrid.
         if (doGaussAndOrBoxBlur[0] == true || doGaussAndOrBoxBlur[1] == true)
@@ -1003,6 +1010,397 @@ public class TerrainManager : MonoBehaviour
         }
         return newWeight / numContributors;
     }
+
+    /* ------------------------------------------------------------------ */
+    /* IVAN KUTSKIR ADAPTED "GAUSSIAN" BLUR */
+    /* ------------------------------------------------------------------ */
+    // http://blog.ivank.net/fastest-gaussian-blur.html
+
+
+    float[] BoxesForGauss(float sigma, float numBoxes){
+        float wl = Mathf.Floor(Mathf.Sqrt((12.0f*sigma*sigma/numBoxes)+1.0f));
+        if (wl % 2.0f == 0.0f){
+            wl--;
+        }
+        float wu = wl + 2.0f;
+
+        float m = Mathf.Round((12.0f*sigma*sigma - numBoxes*wl*wl - 4.0f*numBoxes*wl - 3.0f*numBoxes)/(-4.0f*wl-4.0f));
+
+        float[] dimOfBoxes = new float[(int)numBoxes];
+        for (int i = 0; i < numBoxes; i++)
+        {
+            if (i < m){
+                dimOfBoxes[i] =wl;
+            } else {
+                dimOfBoxes[i] =wu;
+            }
+        }
+        return dimOfBoxes;
+    }
+
+    Color[] Flatten2DTerrainArray(Color[,] array2D){
+        Color[] flattenedArray = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            for (int n = 0; n < (int)SIZE_FULL; n++)
+            {
+                flattenedArray[i*(int)SIZE_FULL+n] = array2D[i,n];
+            }
+        }
+        return flattenedArray;
+    }
+
+    Color[,] Unflatten2DTerrainArray(Color[] array1D){
+        Color[,] unflattenedArray = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            for (int n = 0; n < (int)SIZE_FULL; n++)
+            {
+                unflattenedArray[i,n] = CorrectBlurredColour(array1D[i*(int)SIZE_FULL+n]);
+                //print(unflattenedArray[i,n]);
+            }
+        }
+        return unflattenedArray;
+    }
+
+    Color CorrectBlurredColour(Color inputColor){
+        float sum = 0.0f;
+        for (int i = 0; i < 4; i++)
+        {
+            if (inputColor[i] > 0.0f){
+                sum += inputColor[i];
+            }
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            if (inputColor[i] > 0.0f){
+                inputColor[i] = inputColor[i] / sum;
+            } else {
+                inputColor[i] = 0.0f;
+            }
+        }
+        return inputColor;
+    }
+
+    void PseudoGaussBlur(){
+        Color[] source = Flatten2DTerrainArray(terrainTypeGrid);
+        Color[] target = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
+        float[] boxKernelDims = BoxesForGauss(sigmaWeight, 3.0f);
+        for (int i = 0; i < boxKernelDims.Length; i++)
+        {
+            print(boxKernelDims[i]);
+        }
+        print(boxKernelDims.Length);
+
+        target = PseudoGausBlurTotal(source, target, (boxKernelDims[0]-1.0f)/2.0f);
+        source = PseudoGausBlurTotal(target, source, (boxKernelDims[1]-1.0f)/2.0f);
+        target = PseudoGausBlurTotal(source, target, (boxKernelDims[2]-1.0f)/2.0f);
+        terrainTypeGrid = Unflatten2DTerrainArray(target);
+        /* 
+        for (int i = 0; i < SIZE_FULL; i += 20)
+        {
+            print(terrainTypeGrid[i,0]);
+        }
+        */
+
+    }
+
+    Color[] PseudoGausBlurTotal(Color[] sourceArray, Color[] targetArray, float box){
+        targetArray = sourceArray;
+        PseudoGaussBlurHor(targetArray, sourceArray, box);
+        PseudoGaussBlurVert(sourceArray, targetArray, box);
+        return targetArray;
+    }
+
+
+    void PseudoGaussBlurHor(Color[] sourceArray, Color[] targetArray, float r){
+        float iArr = 1 / (r + r + 1);
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            float ti = i * SIZE_FULL;
+            float li = ti;
+            float ri = ti+r;
+            float fvR = sourceArray[(int)ti].r;
+            float fvG = sourceArray[(int)ti].g;
+            float fvB = sourceArray[(int)ti].b;
+            float fvA = sourceArray[(int)ti].a;
+            float lvR = sourceArray[(int)ti+(int)SIZE_FULL-1].r;
+            float lvG = sourceArray[(int)ti+(int)SIZE_FULL-1].g;
+            float lvB = sourceArray[(int)ti+(int)SIZE_FULL-1].b;
+            float lvA = sourceArray[(int)ti+(int)SIZE_FULL-1].a;
+            float valueR = (r+1)*fvR;
+            float valueG = (r+1)*fvG;
+            float valueB = (r+1)*fvB;
+            float valueA = (r+1)*fvA;
+            for (int j = 0; j < r; j++)
+            {
+                valueR += sourceArray[(int)ti+j].r;
+                valueG += sourceArray[(int)ti+j].g;
+                valueB += sourceArray[(int)ti+j].b;
+                valueA += sourceArray[(int)ti+j].a; 
+            }
+            for (int j = 0; j <= r; j++)
+            {
+                valueR += sourceArray[(int)ri].r - fvR;
+                valueG += sourceArray[(int)ri].g - fvG;
+                valueB += sourceArray[(int)ri].b - fvB;
+                valueA += sourceArray[(int)ri].a - fvA;
+                ri++;
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;
+                //print(targetArray[(int)ti]);
+                ti++;
+            }
+            for (int j = (int)r+1; j < SIZE_FULL-r; j++)
+            {
+                valueR += sourceArray[(int)ri].r - sourceArray[(int)li].r;
+                valueG += sourceArray[(int)ri].g - sourceArray[(int)li].g;
+                valueB += sourceArray[(int)ri].b - sourceArray[(int)li].b;
+                valueA += sourceArray[(int)ri].a - sourceArray[(int)li].a;
+                ri++;
+                li++;
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;  
+                //print(targetArray[(int)ti]);    
+                ti++;      
+            }
+            for (int j = (int)SIZE_FULL-(int)r; j < SIZE_FULL; j++)
+            {
+                valueR += lvR - sourceArray[(int)li].r;
+                valueG += lvG - sourceArray[(int)li].g;
+                valueB += lvB - sourceArray[(int)li].b;
+                valueA += lvA - sourceArray[(int)li].a;
+                li++;
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;
+                //print(targetArray[(int)ti]);
+                ti++;
+            }
+        }
+    }
+
+    void PseudoGaussBlurVert(Color[] sourceArray, Color[] targetArray, float r){
+        float iArr = 1.0f / (2.0f * r + 1);
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            float ti = i;
+            float li = ti;
+            float ri = ti + r * SIZE_FULL;
+            float fvR = sourceArray[(int)ti].r;
+            float fvG = sourceArray[(int)ti].g;
+            float fvB = sourceArray[(int)ti].b;
+            float fvA = sourceArray[(int)ti].a;
+            float lvR = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].r;
+            float lvG = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].g;
+            float lvB = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].b;
+            float lvA = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].a;
+            float valueR = (r+1)*fvR;
+            float valueG = (r+1)*fvG;
+            float valueB = (r+1)*fvB;
+            float valueA = (r+1)*fvA;
+            for (int j = 0; j < r; j++)
+            {
+                valueR += sourceArray[(int)ti+j*(int)SIZE_FULL].r;
+                valueG += sourceArray[(int)ti+j*(int)SIZE_FULL].g;
+                valueB += sourceArray[(int)ti+j*(int)SIZE_FULL].b;
+                valueA += sourceArray[(int)ti+j*(int)SIZE_FULL].a;                 
+            }
+            for (int j = 0; j <= r; j++)
+            {
+                valueR += sourceArray[(int)ri].r - fvR;
+                valueG += sourceArray[(int)ri].g - fvG;
+                valueB += sourceArray[(int)ri].b - fvB;
+                valueA += sourceArray[(int)ri].a - fvA;   
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;
+                //print(targetArray[(int)ti]);
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+            for (int j = (int)r+1; j < (int)SIZE_FULL-r; j++)
+            {
+                valueR += sourceArray[(int)ri].r - sourceArray[(int)li].r;
+                valueG += sourceArray[(int)ri].g - sourceArray[(int)li].g;
+                valueB += sourceArray[(int)ri].b - sourceArray[(int)li].b;
+                valueA += sourceArray[(int)ri].a - sourceArray[(int)li].a;
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;
+                //print(targetArray[(int)ti]);
+                li += SIZE_FULL;
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+            for (int j = (int)SIZE_FULL-(int)r; j < (int)SIZE_FULL; j++)
+            {
+                valueR += lvR - sourceArray[(int)li].r;
+                valueG += lvG - sourceArray[(int)li].g;
+                valueB += lvB - sourceArray[(int)li].b;
+                valueA += lvA - sourceArray[(int)li].a;
+                targetArray[(int)ti].r = valueR*iArr;
+                targetArray[(int)ti].g = valueG*iArr;
+                targetArray[(int)ti].b = valueB*iArr;
+                targetArray[(int)ti].a = valueA*iArr;
+                //print(targetArray[(int)ti]);
+                li += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+        }
+    }
+
+    /*  void PseudoGaussBlurHor(Color32[] sourceArray, Color32[] targetArray, int r){
+        float iArr = 1 / (r + r + 1);
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            float ti = i * SIZE_FULL;
+            float li = ti;
+            float ri = ti+r;
+            byte fvR = sourceArray[(int)ti].r;
+            byte fvG = sourceArray[(int)ti].g;
+            byte fvB = sourceArray[(int)ti].b;
+            byte fvA = sourceArray[(int)ti].a;
+            byte lvR = sourceArray[(int)ti+(int)SIZE_FULL-1].r;
+            byte lvG = sourceArray[(int)ti+(int)SIZE_FULL-1].g;
+            byte lvB = sourceArray[(int)ti+(int)SIZE_FULL-1].b;
+            byte lvA = sourceArray[(int)ti+(int)SIZE_FULL-1].a;
+            byte valueR = (byte)((r+1)*fvR);
+            byte valueG = (byte)((r+1)*fvG);
+            byte valueB = (byte)((r+1)*fvB);
+            byte valueA = (byte)((r+1)*fvA);
+            for (int j = 0; j < r; j++)
+            {
+                valueR += sourceArray[(int)ti+j].r;
+                valueG += sourceArray[(int)ti+j].g;
+                valueB += sourceArray[(int)ti+j].b;
+                valueA += sourceArray[(int)ti+j].a; 
+            }
+            for (int j = 0; j <= r; j++)
+            {
+                valueR += (byte)(sourceArray[(int)ri].r - fvR);
+                valueG += (byte)(sourceArray[(int)ri].g - fvG);
+                valueB += (byte)(sourceArray[(int)ri].b - fvB);
+                valueA += (byte)(sourceArray[(int)ri].a - fvA);
+                ri++;
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
+                //print(targetArray[(int)ti]);
+                ti++;
+            }
+            for (int j = (int)r+1; j < SIZE_FULL-r; j++)
+            {
+                valueR += (byte)(sourceArray[(int)ri].r - sourceArray[(int)li].r);
+                valueG += (byte)(sourceArray[(int)ri].g - sourceArray[(int)li].g);
+                valueB += (byte)(sourceArray[(int)ri].b - sourceArray[(int)li].b);
+                valueA += (byte)(sourceArray[(int)ri].a - sourceArray[(int)li].a);
+                ri++;
+                li++;
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr); 
+                //print(targetArray[(int)ti]);    
+                ti++;      
+            }
+            for (int j = (int)SIZE_FULL-(int)r; j < SIZE_FULL; j++)
+            {
+                valueR += (byte)(lvR - sourceArray[(int)li].r);
+                valueG += (byte)(lvG - sourceArray[(int)li].g);
+                valueB += (byte)(lvB - sourceArray[(int)li].b);
+                valueA += (byte)(lvA - sourceArray[(int)li].a);
+                li++;
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
+                //print(targetArray[(int)ti]);
+                ti++;
+            }
+        }
+    }
+
+    void PseudoGaussBlurVert(Color32[] sourceArray, Color32[] targetArray, float r){
+        float iArr = 1.0f / (2.0f * r + 1);
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            float ti = i;
+            float li = ti;
+            float ri = ti + r * SIZE_FULL;
+            byte fvR = sourceArray[(int)ti].r;
+            byte fvG = sourceArray[(int)ti].g;
+            byte fvB = sourceArray[(int)ti].b;
+            byte fvA = sourceArray[(int)ti].a;
+            byte lvR = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].r;
+            byte lvG = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].g;
+            byte lvB = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].b;
+            byte lvA = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].a;
+            byte valueR = (byte)((r+1)*fvR);
+            byte valueG = (byte)((r+1)*fvG);
+            byte valueB = (byte)((r+1)*fvB);
+            byte valueA = (byte)((r+1)*fvA);
+            for (int j = 0; j < r; j++)
+            {
+                valueR += sourceArray[(int)ti+j*(int)SIZE_FULL].r;
+                valueG += sourceArray[(int)ti+j*(int)SIZE_FULL].g;
+                valueB += sourceArray[(int)ti+j*(int)SIZE_FULL].b;
+                valueA += sourceArray[(int)ti+j*(int)SIZE_FULL].a;                 
+            }
+            for (int j = 0; j <= r; j++)
+            {
+                valueR += (byte)(sourceArray[(int)ri].r - fvR);
+                valueG += (byte)(sourceArray[(int)ri].g - fvG);
+                valueB += (byte)(sourceArray[(int)ri].b - fvB);
+                valueA += (byte)(sourceArray[(int)ri].a - fvA);   
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
+                //print(targetArray[(int)ti]);
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+            for (int j = (int)r+1; j < (int)SIZE_FULL-r; j++)
+            {
+                valueR += (byte)(sourceArray[(int)ri].r - sourceArray[(int)li].r);
+                valueG += (byte)(sourceArray[(int)ri].g - sourceArray[(int)li].g);
+                valueB += (byte)(sourceArray[(int)ri].b - sourceArray[(int)li].b);
+                valueA += (byte)(sourceArray[(int)ri].a - sourceArray[(int)li].a);
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
+                //print(targetArray[(int)ti]);
+                li += SIZE_FULL;
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+            for (int j = (int)SIZE_FULL-(int)r; j < (int)SIZE_FULL; j++)
+            {
+                valueR += (byte)(lvR - sourceArray[(int)li].r);
+                valueG += (byte)(lvG - sourceArray[(int)li].g);
+                valueB += (byte)(lvB - sourceArray[(int)li].b);
+                valueA += (byte)(lvA - sourceArray[(int)li].a);
+                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
+                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
+                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
+                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
+                //print(targetArray[(int)ti]);
+                li += SIZE_FULL;
+                ti += SIZE_FULL;
+            }
+        }
+    } */
+
 
     /* ------------------------------------------------------------------ */
     /* GETTERS & SETTERS */
