@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /*
- * @Author: Eric Chan aka eepmon
+ * @Author: Eric Chan aka eepmon / www.eepmon.com
  * @Info: The WaterManager class
  * Detects and determines bodies of water and shorlines
  */
@@ -17,12 +17,15 @@ public class WaterManager : MonoBehaviour
     
     public List<WaterDataObject> shoreLines = new List<WaterDataObject>();  // this could be for Nader eventually
     public List<WaterDataObject> allWater   = new List<WaterDataObject>();
-    
+
+    /* //////////////////////////////////////*/
+    /* #### IGNORE DEBUGGING VARS BELOW #### */
+    /* //////////////////////////////////////*/
+
     private int row, col;
 
     // for testing purpose until I get the acutal terrainTypeGrid data! 
     private string testImage = "Textures/terrain-200x200-a";
-    //private string testImage = "Textures/terrain-monkey-island-200x200";
     private Color[,] colDataDummy;                    
     private Texture2D waterTex;
 
@@ -30,15 +33,8 @@ public class WaterManager : MonoBehaviour
     private Color32[,] pixelData2D;                      // 2D array of the image data (yes that's how you declare a 2D arr)
     private Color32[,] pixelTest = new Color32[3,3];     // for debug
 
-    void Awake()
-    {
-        print("---------- WaterManager :: Awakened");
-    }
-    
-    void Start()
-    {
-        print("---------- WaterManager :: Started");
-    }
+    void Awake() { print("---------- WaterManager :: Awakened");}
+    void Start() { print("---------- WaterManager :: Started"); }
 
     /*
      * @Author: Eric Chan aka eepmon 
@@ -49,29 +45,30 @@ public class WaterManager : MonoBehaviour
         return shoreLines;
     }
 
-    // Alex data go in here and manipulate
+    /*
+     * @Author: Eric Chan aka eepmon 
+     * @Info: initializes the WaterManger with terrainTypeGrid data
+     */
     public void initialize(int gridSize, Color[,] terrainTypeGrid)
     {
         print("---------- WaterManager :: initialize");
-        
-        SIZE_FULL = 2049;
 
-        // find shoreline between these percentage values of water
+        SIZE_FULL = 2049;
+       
         for (int x = 0; x < SIZE_FULL; x++)
         {
             for (int y = 0; y < SIZE_FULL; y++)
             {
-                checkForWaterRegion(x, y, terrainTypeGrid[x, y]);     // ### FOR PRODUCTION!!
+                checkForWaterRegion(x, y, terrainTypeGrid[x, y]);     // ### FOR PRODUCTION!!  
             }
         }
     }
 
-
     /*
-     * this is where we manipulate the data based on Alex's values
-     * and update the perlineheight data
-     * and send it back to calling program
-     * aka Monkey in the Middle
+     * @Author: Eric Chan aka eepmon 
+     * @Info: updates the perlinHeightData data with 
+     * detected shoreline and bodies of water
+     * @Returns: updated perlinHeightData
      */
     public float[,] getHeights(float[,] perlinHeightData)
     {
@@ -111,9 +108,9 @@ public class WaterManager : MonoBehaviour
         float lowestWaterHeight = getLowestWaterHeight(terrainComp);
         float bodyWaterX = terrainComp.terrainData.bounds.center[0];
         float bodyWaterY = terrainComp.terrainData.bounds.center[2];
-        
-        print("## LOWEST WATER TERRAIN HEIGHT AT LOWEST = " + lowestWaterHeight);
+
         /*
+        print("## LOWEST WATER TERRAIN HEIGHT AT LOWEST = " + lowestWaterHeight);
         print("TERRAIN BOUNDS MIN = " + terrainComp.terrainData.bounds.min);
         print("TERRAIN BOUNDS MAX = " + terrainComp.terrainData.bounds.max);
         print("TERRAIN BOUNDS CENTER = " + terrainComp.terrainData.bounds.center);
@@ -134,6 +131,7 @@ public class WaterManager : MonoBehaviour
      * @Author: Eric Chan aka eepmon
      * @Info: gets the lowest terrain height from bodies of water only
      * - List<WaterDataObject> allWater is a member variable of this class
+     * @Returns: the lowet height value within the bodies of water
      */
     private float getLowestWaterHeight(Terrain terrainComp)
     {
@@ -178,28 +176,26 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-     * finds out the shoreline type of terrain
-     * and returns the name to the calling program
-     * shoreline is determined by the weighted values in RGBA
-     * Will probably have to split green to capture forest
+     * @Author: Eric Chan aka eepmon
+     * @Info: finds out what type of shoreline, encapsulates
+     * the data into a WaterDataObject. Shoreline is determined by the weighted values in RGBA.
+     * @Returns: WaterDataObject to the calling program
      */
     private WaterDataObject getShoreData(int x, int y, Color cData)
     {
         WaterDataObject wObj = new WaterDataObject();
 
+        // check shoreline type. Tree? Grass? Mountain?
         if (cData.r > cData.g && cData.b > cData.g)
         {
-            //print("Must be TREE ZONE @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "forest", cData.b);
         }
         else if (cData.g > cData.r && cData.b > cData.r)
         {
-            //print("Must be GRASS @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "grass", cData.b);
         }
-        else if(cData.a >= 0.8f)        // play with this value later
+        else // clearly it must be a mountain
         {
-            //print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "mountain", cData.b);
         }
 
@@ -213,8 +209,9 @@ public class WaterManager : MonoBehaviour
 
 
     /*
-     * @Author: Eric Chan aka EEPMON
-     * @Info: returns the lowest number from incoming List of floats
+     * @Author: Eric Chan aka eepmon
+     * @Info: searches for the lowest number from incoming List of floats
+     * @Returns: lowest number
      */
     private float getLowestNumInList(List<float> arr)
     {
@@ -233,8 +230,9 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-     * @Author: Eric Chan aka EEPMON
-     * @Info: returns the lowest number from incoming List of floats
+     * @Author: Eric Chan aka eepmon
+     * @Info: searches for the highest number from incoming List of floats
+     * @Returns: highest number
      */
     private float getHighestNumInList(List<float> arr)
     {
@@ -253,8 +251,9 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-     * @Author: Eric Chan aka EEPMON
-     * @Info: returns the lowest number from incoming 2D array
+     * @Author: Eric Chan aka eepmon
+     * @Info: searches for the lowest number from incoming 2D-array of floats
+     * @Return: lowest number
      */
     private float getLowestNumIn2DArr(float[,] arr, int size)
     {
@@ -276,8 +275,9 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-     * @Author: Eric Chan aka EEPMON
-     * @Info: returns the highest number from incoming 2D array
+     * @Author: Eric Chan aka eepmon
+     * @Info: searches for the highest number from incoming 2D-array of floats
+     * @Returns: highest number
      */
     private float getHighestNumIn2DArr(float[,] arr)
     {
@@ -303,33 +303,13 @@ public class WaterManager : MonoBehaviour
     /* ////////////////////////////////*/
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     /* ////////////////////////////////////////////////////////////////////////////////////////*/
     /* #### START DEBUGGING FUNCTIONS BELOW. NOT USED IN FINAL PCG SYSTEM IMPLEMENTATION! #### */
     /* ////////////////////////////////////////////////////////////////////////////////////////*/
-    
+
 
     /*
+     * @Author: Eric Chan aka eepmon
      * @Info: FOR DEBUGGING ONLY!
      * Gives the target x,y and search space value. 
      * Using try/catch so that the search space does not fall into ArrayIndexOutOfBounds
@@ -341,7 +321,6 @@ public class WaterManager : MonoBehaviour
 
         for (int j = 1; j < s; j++)
         {
-
             //Debug.Log("getWeightAverageAt :::: target x,y = " + x + "," + y);
             float weightSum = 0.0f;
             int numPx = 0;
@@ -403,6 +382,7 @@ public class WaterManager : MonoBehaviour
 
 
     /*
+     * @Author: Eric Chan aka eepmon
      * @Info: FOR DEBUGGING ONLY!
      * Searches the neighbourhood around x,y coordinates of the
      * pixelData2D array. If it is found, it will draw a sphere with its corresonding terrain colour
@@ -504,13 +484,13 @@ public class WaterManager : MonoBehaviour
         spherePx.transform.position = new Vector3(x, 0, y);
         colorizeObj(spherePx, col32);
     }
-    
+
 
    /* 
-   * @Author: Eric Chan aka EEPMON
-   * @Info: FOR DEBUGGING ONLY!
-   * Colours the game object 
-   */
+    * @Author: Eric Chan aka eepmon
+    * @Info: FOR DEBUGGING ONLY!
+    * Colours the game object 
+    */
     public void colorizeObj(GameObject ob, Color32 col32)
     {
         if (ob.GetComponent<MeshRenderer>() == null)
@@ -524,9 +504,8 @@ public class WaterManager : MonoBehaviour
 
 
     /* 
-    * @Author: Eric Chan aka EEPMON
-    * @Info: FOR DEBUGGING ONLY!
-    * Returns the name of the terrain
+    * @Author: Eric Chan aka eepmon
+    * @Info: Returns the name of the terrain
     * based on hard coded Color32 values
     */
     private string getTerrainNameFromColor32(Color32 col32)
@@ -555,9 +534,8 @@ public class WaterManager : MonoBehaviour
 
 
     /* 
-    * @Author: Eric Chan aka EEPMON
-    * @Info:FOR DEBUGGING ONLY!
-    *  Returns the weight value of the terrain
+    * @Author: Eric Chan aka eepmon
+    * @Info: Returns the weight value of the terrain
     * based on hard coded color values
     */
     private float getTerrainWeightByColor32(Color32 col32)
@@ -586,7 +564,7 @@ public class WaterManager : MonoBehaviour
 
 
     /*
-   * @Author: Eric Chan aka EEPMON
+   * @Author: Eric Chan aka eepmon
    * @Info: FOR DEBUGGING ONLY!
    * Searches through the 2D array of RGBA and renders (draws) the data into the scene view
    */
@@ -603,7 +581,7 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-    * @Author: Eric Chan aka EEPMON
+    * @Author: Eric Chan aka eepmon
     * @Info: FOR DEBUGGING ONLY!
     * Searches through the 2D array of RGBA
     * values for water. This is determined by the 4D weights
@@ -626,8 +604,8 @@ public class WaterManager : MonoBehaviour
     }
 
     /*
-    * @Author: Eric Chan aka EEPMON
-    * @Info: FOR DEBUGGING ONLY! REALLY OLD STUFF!
+    * @Author: Eric Chan aka eepmon
+    * @Info: FOR DEBUGGING ONLY! OLD STUFF!
     * Returns true/false if the area is of water based on the 
     * value of the incoming Color32
     */
@@ -655,7 +633,7 @@ public class WaterManager : MonoBehaviour
     }
 
     /* 
-    * @Author: Eric Chan aka EEPMON
+    * @Author: Eric Chan aka eepmon
     * @Info: FOR DEBUGGING ONLY! OLD STUFF!
     * Test to create a row/col of primitive spheres
     * based on pixel grid graphic
@@ -677,6 +655,6 @@ public class WaterManager : MonoBehaviour
     }
 }
 
-/* ///////////////////////////////////*/
-/* #### END DEBUGGING FUNCTIONS. #### */
-/* ///////////////////////////////////*/
+/* //////////////////////////////////*/
+/* #### END DEBUGGING FUNCTIONS #### */
+/* //////////////////////////////////*/
