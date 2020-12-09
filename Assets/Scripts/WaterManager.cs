@@ -12,14 +12,12 @@ public class WaterManager : MonoBehaviour
 {
     private int SIZE_FULL;
     private float MIN_SHORE_THRESHOLD = 0.53f;
-    private float MAX_SHORE_THRESHOLD = 0.70f;
+    private float MAX_SHORE_THRESHOLD = 0.95f;
     private float WATER_HEIGHT;
     
     public List<WaterDataObject> shoreLines = new List<WaterDataObject>();  // this could be for Nader eventually
     public List<WaterDataObject> allWater   = new List<WaterDataObject>();
     
-    public List<GameObject> waterPlanes     = new List<GameObject>();       // holds all water planes in the scene
-
     private int row, col;
 
     // for testing purpose until I get the acutal terrainTypeGrid data! 
@@ -55,47 +53,15 @@ public class WaterManager : MonoBehaviour
     public void initialize(int gridSize, Color[,] terrainTypeGrid)
     {
         print("---------- WaterManager :: initialize");
-
-        // ### make sure texture is read/write enabled! (go to the texture in your resources and find it in the advance dropdown)
-        //waterTex = Resources.Load<Texture2D>(testImage);
-        //SIZE_FULL = waterTex.width;     // assuming that the grid size will always be a perfect square
-
+        
         SIZE_FULL = 2049;
-        /*
-        colDataDummy = new Color[waterTex.width, waterTex.height];
-
-        int row = -1;
-        int col = 0;
-
-        // GetPixels() returns a 1D array of RGBA values - convert to 2D so your brain can understand it
-        for (int i = 0; i < waterTex.GetPixels().Length; i++)
-        {
-            if (i % 200 == 0)
-            {
-                row++;
-                col = 0;
-            }
-            else
-            {
-                col++;
-            }
-
-            colDataDummy[row, col] = waterTex.GetPixels()[i];
-        }
-        */
 
         // find shoreline between these percentage values of water
-        // small sample cuz it be foreva
-
-        // also create an array that holds the shorline terrain types for NADER
-
-        
         for (int x = 0; x < SIZE_FULL; x++)
         {
             for (int y = 0; y < SIZE_FULL; y++)
             {
                 checkForWaterRegion(x, y, terrainTypeGrid[x, y]);     // ### FOR PRODUCTION!!
-                //checkForWaterRegion(x, y, colDataDummy[x, y]);     // ### FOR DEBUGGING!!
             }
         }
     }
@@ -110,8 +76,8 @@ public class WaterManager : MonoBehaviour
     public float[,] getHeights(float[,] perlinHeightData)
     {
         // get the lowest number in the 2D array
-        WATER_HEIGHT = getLowestNumIn2DArr(perlinHeightData) - 0.01f;
-        
+        WATER_HEIGHT = getLowestNumIn2DArr(perlinHeightData, SIZE_FULL) - 0.01f;
+       
         // this loop goes through 100% WATER ONLY
         for (int i = 0; i < allWater.Count; i++)
         {
@@ -140,33 +106,47 @@ public class WaterManager : MonoBehaviour
      * @Author: Eric Chan aka eepmon
      * @Info: creates the water planes to simulate bodies of water
      */
-    public void createWaterPlanes(Terrain terrainComp)
+    public void createWaterPlane(Terrain terrainComp)
     {
-        float terrainHeight = terrainComp.terrainData.GetHeight(allWater[0].x, allWater[0].y);
-        //float bodyWaterX = terrainComp.terrainData.bounds.center[0];
-        //float bodyWaterY = terrainComp.terrainData.bounds.center[2];
-        float bodyWaterX = 48.0f;
-        float bodyWaterY = 52.0f;
+        float lowestWaterHeight = getLowestWaterHeight(terrainComp);
+        float bodyWaterX = terrainComp.terrainData.bounds.center[0];
+        float bodyWaterY = terrainComp.terrainData.bounds.center[2];
         
-        print("TERRAIN HEIGHT AT 0,0 = " + terrainHeight);
+        print("## LOWEST WATER TERRAIN HEIGHT AT LOWEST = " + lowestWaterHeight);
+        /*
         print("TERRAIN BOUNDS MIN = " + terrainComp.terrainData.bounds.min);
         print("TERRAIN BOUNDS MAX = " + terrainComp.terrainData.bounds.max);
         print("TERRAIN BOUNDS CENTER = " + terrainComp.terrainData.bounds.center);
         print("TERRAIN BOUNDS SIZE = " + terrainComp.terrainData.bounds.size);
-       
+        */
+
+        // create the single water plane to "dissect" the Terrain on the z-axis
         GameObject waterPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
 
-        // hard code the scale values for now during testing (you'll need to adapt it for the whole 2049x2049 later...)
-        // DO NEXT :: DON'T SCALE IT, JUST CREATE A QUAD BASED ON COORDS AT SIZE_FULL
         waterPlane.transform.localScale = new Vector3(100.0f, 1.0f, 100.0f);
-        waterPlane.transform.position = new Vector3(bodyWaterX, terrainHeight + 0.01f, bodyWaterY);
-        
+        waterPlane.transform.position = new Vector3(bodyWaterX, lowestWaterHeight + 0.05f, bodyWaterY);
+        // apply blue material to simulate water
         Renderer waterMaterial = waterPlane.GetComponent<Renderer>(); // grab the renderer component on the plane
-        waterMaterial.material.SetColor("_Color", new Color(0.0f,0.0f,1.0f,0.3f));
-        
-        waterPlanes.Add(waterPlane); 
+        waterMaterial.material.SetColor("_Color", new Color(0.0f,0.0f,1.0f,0.8f));
     }
 
+    /*
+     * @Author: Eric Chan aka eepmon
+     * @Info: gets the lowest terrain height from bodies of water only
+     * - List<WaterDataObject> allWater is a member variable of this class
+     */
+    private float getLowestWaterHeight(Terrain terrainComp)
+    {
+        List<float> waterHeights = new List<float>();
+
+        // collect all the height data for water only
+        for (int i = 0; i < allWater.Count; i++)
+        {
+            waterHeights.Add(terrainComp.terrainData.GetHeight(allWater[i].x, allWater[i].y));
+        }
+
+        return getLowestNumInList(waterHeights);
+    }
 
 
     /*
@@ -179,28 +159,21 @@ public class WaterManager : MonoBehaviour
 
         // find shoreline between these percentage values of water
         if (water.b > MIN_SHORE_THRESHOLD && water.b < MAX_SHORE_THRESHOLD)
-        {
-            //Debug.Log("\t WaterManager :: SHORELINE FOUND - DEAL WITH IT");
+        { 
             // find what type of terrain it is based on strength of the component
             WaterDataObject shoreData = getShoreData(x,y,data);
-            
-            //WaterDataObject wObj = new WaterDataObject();
-
-            // !!!!!!***** you'll need to have another function to generate the heights for the shoreline
-            //wObj.init(x, y, shoreType, 2.4f);
             shoreLines.Add(shoreData);
         }
         else if (water.b > MAX_SHORE_THRESHOLD)
         {
             // it's 100% water go DEEP DIVE!
-            //print("\t WaterManager :: 100% WATER FOUND - DEAL WITH IT");
-            // save the water into a group (for potential use...maybe not needed)
             WaterDataObject wObj = new WaterDataObject();
             wObj.init(x, y, "water", 0.1f);
             allWater.Add(wObj);
-        }else
+        }
+        else
         {
-            print("Error: No Water / Shores Found");
+            // nothing found
         }
     }
 
@@ -216,21 +189,17 @@ public class WaterManager : MonoBehaviour
 
         if (cData.r > cData.g && cData.b > cData.g)
         {
-            print("Must be TREE ZONE @ " + x + "," + y + " = " + cData);
-            // can we just use the R component as the weight itself?
-            //wObj.init(x, y, "forest", cData.r);
+            //print("Must be TREE ZONE @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "forest", cData.b);
         }
         else if (cData.g > cData.r && cData.b > cData.r)
         {
-            print("Must be GRASS @ " + x + "," + y + " = " + cData);
-            //wObj.init(x, y, "grass", cData.g);
+            //print("Must be GRASS @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "grass", cData.b);
         }
         else if(cData.a >= 0.8f)        // play with this value later
         {
-            print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
-            //wObj.init(x, y, "mountain", cData.a);
+            //print("Must be MOUNTAIN @ " + x + "," + y + " = " + cData);
             wObj.init(x, y, "mountain", cData.b);
         }
 
@@ -242,17 +211,58 @@ public class WaterManager : MonoBehaviour
     /* #### START UTILITY FUNCTIONS #### */
     /* //////////////////////////////////*/
 
+
+    /*
+     * @Author: Eric Chan aka EEPMON
+     * @Info: returns the lowest number from incoming List of floats
+     */
+    private float getLowestNumInList(List<float> arr)
+    {
+        float lowest = arr[0];
+
+        for (int i = 0; i < arr.Count; i++)
+        {
+            float num = arr[i];
+
+            if (num < lowest)
+            {
+                lowest = num;
+            }
+        }
+        return lowest;
+    }
+
+    /*
+     * @Author: Eric Chan aka EEPMON
+     * @Info: returns the lowest number from incoming List of floats
+     */
+    private float getHighestNumInList(List<float> arr)
+    {
+        float highest = arr[0];
+
+        for (int i = 0; i < arr.Count; i++)
+        {
+            float num = arr[i];
+
+            if (num > highest)
+            {
+                highest = num;
+            }
+        }
+        return highest;
+    }
+
     /*
      * @Author: Eric Chan aka EEPMON
      * @Info: returns the lowest number from incoming 2D array
      */
-    private float getLowestNumIn2DArr(float[,] arr)
+    private float getLowestNumIn2DArr(float[,] arr, int size)
     {
         float lowest = arr[0, 0];
        
-        for (int i = 0; i < SIZE_FULL; i++)
+        for (int i = 0; i < size; i++)
         {
-            for (int j = 0; j < SIZE_FULL; j++)
+            for (int j = 0; j < size; j++)
             {
                 float num = arr[i, j];
 
@@ -293,6 +303,27 @@ public class WaterManager : MonoBehaviour
     /* ////////////////////////////////*/
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /* ////////////////////////////////////////////////////////////////////////////////////////*/
     /* #### START DEBUGGING FUNCTIONS BELOW. NOT USED IN FINAL PCG SYSTEM IMPLEMENTATION! #### */
     /* ////////////////////////////////////////////////////////////////////////////////////////*/
@@ -311,7 +342,7 @@ public class WaterManager : MonoBehaviour
         for (int j = 1; j < s; j++)
         {
 
-            Debug.Log("getWeightAverageAt :::: target x,y = " + x + "," + y);
+            //Debug.Log("getWeightAverageAt :::: target x,y = " + x + "," + y);
             float weightSum = 0.0f;
             int numPx = 0;
 
@@ -380,7 +411,7 @@ public class WaterManager : MonoBehaviour
     private void srchAndDrwNBsAt(int x, int y, int s = 1)
     {
         // identify the cell (x,y)
-        Debug.Log("+++++++++AND NOW WE WILL LOOK A NEIGHBOURS OF (" + x + " , " + y + ") +++++++++");
+        //Debug.Log("+++++++++AND NOW WE WILL LOOK A NEIGHBOURS OF (" + x + " , " + y + ") +++++++++");
         
         // s is the search space that cannot exceed SEARCHSPACE_MAX?
         for (int j = 1; j < s; j++)
@@ -390,7 +421,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x - j, y + j];
                 drawPixelData(x - j, y + j, col32);
-                Debug.Log("Upper Left EXIST @ " + (x - j) + "," + (y + j));
+                //Debug.Log("Upper Left EXIST @ " + (x - j) + "," + (y + j));
             }
             catch (Exception e) { Debug.Log("Upper Left NOT EXIST @ " + (x - j) + "," + (y + j));}
 
@@ -399,7 +430,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x, y + j];
                 drawPixelData(x, y + j, col32);
-                Debug.Log("Top EXIST @ " + x  + "," + (y + j));
+                //Debug.Log("Top EXIST @ " + x  + "," + (y + j));
             }
             catch (Exception e) { Debug.Log("Top NOT EXIST @ " + x + "," + (y + j)); }
 
@@ -408,7 +439,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x + j, y + j];
                 drawPixelData(x + j, y + j, col32);
-                Debug.Log("Upper Right EXIST @ " + (x + j) + "," + (y + j));
+                //Debug.Log("Upper Right EXIST @ " + (x + j) + "," + (y + j));
             }
             catch (Exception e) { Debug.Log("Upper Right EXIST @ " + (x + j) + "," + (y + j)); }
 
@@ -417,7 +448,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x + j, y];
                 drawPixelData(x + j, y, col32);
-                Debug.Log("Right EXIST @ " + (x + j) + "," + y);
+                //Debug.Log("Right EXIST @ " + (x + j) + "," + y);
             }
             catch (Exception e) { Debug.Log("Right EXIST @ " + (x + j) + "," + y); }
 
@@ -426,7 +457,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x + j, y - j];
                 drawPixelData(x + j, y - j, col32);
-                Debug.Log("Bottom Right EXIST @ " + (x + j) + "," + (y - j));
+                //Debug.Log("Bottom Right EXIST @ " + (x + j) + "," + (y - j));
             }
             catch (Exception e) { Debug.Log("Bottom Right EXIST @ " + (x + j) + "," + (y - j)); }
 
@@ -435,7 +466,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x, y - j];
                 drawPixelData(x, y - j, col32);
-                Debug.Log("Bottom EXIST @ " + x + "," + (y - j));
+                //Debug.Log("Bottom EXIST @ " + x + "," + (y - j));
             }
             catch (Exception e) { Debug.Log("Bottom EXIST @ " + x + "," + (y - j)); }
 
@@ -444,7 +475,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x - j, y - j];
                 drawPixelData(x - j, y - j, col32);
-                Debug.Log("Bottom Left EXIST @ " + (x-j) + "," + (y - j));
+                //Debug.Log("Bottom Left EXIST @ " + (x-j) + "," + (y - j));
             }
             catch (Exception e) { Debug.Log("Bottom Left EXIST @ " + (x - j) + "," + (y - j)); }
 
@@ -453,7 +484,7 @@ public class WaterManager : MonoBehaviour
             {
                 Color32 col32 = pixelData2D[x - j, y];
                 drawPixelData(x - j, y, col32);
-                Debug.Log("Bottom Left EXIST @ " + (x - j) + "," + y);
+                //Debug.Log("Bottom Left EXIST @ " + (x - j) + "," + y);
             }
             catch (Exception e) { Debug.Log("Bottom Left EXIST @ " + (x - j) + "," + y); }
         }
@@ -490,11 +521,12 @@ public class WaterManager : MonoBehaviour
         Renderer obRenderer = ob.GetComponent<Renderer>();
         obRenderer.material.SetColor("_Color", col32);
     }
-    
+
 
     /* 
     * @Author: Eric Chan aka EEPMON
-    * @Info: Returns the name of the terrain
+    * @Info: FOR DEBUGGING ONLY!
+    * Returns the name of the terrain
     * based on hard coded Color32 values
     */
     private string getTerrainNameFromColor32(Color32 col32)
@@ -524,7 +556,8 @@ public class WaterManager : MonoBehaviour
 
     /* 
     * @Author: Eric Chan aka EEPMON
-    * @Info: Returns the weight value of the terrain
+    * @Info:FOR DEBUGGING ONLY!
+    *  Returns the weight value of the terrain
     * based on hard coded color values
     */
     private float getTerrainWeightByColor32(Color32 col32)
@@ -594,7 +627,7 @@ public class WaterManager : MonoBehaviour
 
     /*
     * @Author: Eric Chan aka EEPMON
-    * @Info: FOR DEBUGGING ONLY! OLD STUFF!
+    * @Info: FOR DEBUGGING ONLY! REALLY OLD STUFF!
     * Returns true/false if the area is of water based on the 
     * value of the incoming Color32
     */
@@ -644,6 +677,6 @@ public class WaterManager : MonoBehaviour
     }
 }
 
-/* /////////////////////////////////////////*/
-/* #### END DEBUGGING FUNCTIONS BELOW. #### */
-/* /////////////////////////////////////////*/
+/* ///////////////////////////////////*/
+/* #### END DEBUGGING FUNCTIONS. #### */
+/* ///////////////////////////////////*/
