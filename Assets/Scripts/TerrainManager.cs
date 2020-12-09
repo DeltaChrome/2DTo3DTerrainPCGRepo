@@ -61,6 +61,7 @@ public class TerrainManager : MonoBehaviour
 
     //To be accessed by Water Manager
     float[,] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[,] perlinNoiseArrayFinalizedFlipped = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     // For Individual Terrain Cell.
     float[,] perlinNoiseArrayCell = new float[(int)SIZE_FULL, (int)SIZE_FULL];
@@ -112,7 +113,7 @@ public class TerrainManager : MonoBehaviour
         GenerateTerrain();
 
         // WaterManager AGAIN
-        //waterManager.createWaterPlanes(terrainComponent);
+        waterManager.createWaterPlane(terrainComponent);
 
         //Call Agent Manager
         //agentManager.Init(terrainTypeGrid);
@@ -171,24 +172,18 @@ public class TerrainManager : MonoBehaviour
                 //print(terrainTypeGrid[x, y].a);
 
                 //terrainTypeGrid
-                if (terrainTypeGrid[x, y].a < perlinNoiseArray[x, y])
-                {
-                    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
-
-                }
-                //Probably need to replace MBasePass with the mountain terrain type grid(I think)
-                //if (perlinNoiseArrayMBasePass[x, y] < perlinNoiseArray[x, y])
+                //if (terrainTypeGrid[x, y].a < perlinNoiseArray[x, y])
                 //{
                 //    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
 
                 //}
-                else
-                {
+                //else
+                //{
 
                     //perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y];
                     perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (((perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y]) * terrainTypeGrid[x, y].a);
 
-                }
+                //}
 
             }
         }
@@ -229,9 +224,21 @@ public class TerrainManager : MonoBehaviour
     {
         //print ("Generating Terrain...");
 
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+
+                perlinNoiseArrayFinalizedFlipped[y, x] = perlinNoiseArrayFinalized[x, y];
+
+            }
+        }
+
+
         //Set terrain height map
         terrainComponent = terrainObject.GetComponent<Terrain>();
-        terrainComponent.terrainData.SetHeights(0, 0, perlinNoiseArrayFinalized);
+        terrainComponent.Flush();
+        terrainComponent.terrainData.SetHeights(0, 0, perlinNoiseArrayFinalizedFlipped);
 
         ClearNoise(perlinNoiseArray);
         ClearNoise(perlinNoiseArrayCell);
@@ -328,7 +335,7 @@ public class TerrainManager : MonoBehaviour
 
                 //perlinNoiseArrayMPass[x, y] += (Mathf.PerlinNoise(xCoord, yCoord));
 
-                if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.95f))
+                if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.70f))
                 {
 
                     if (numPoints == 0)
@@ -445,6 +452,7 @@ public class TerrainManager : MonoBehaviour
             previousSmallestDist = 2000;
             previousSmallestDist2 = 2000;
             smallestPoint = 0;
+            smallestPoint2 = 0;
         }
 
 
