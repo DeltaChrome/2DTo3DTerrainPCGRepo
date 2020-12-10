@@ -818,7 +818,6 @@ public class TerrainManager : MonoBehaviour
                                 if ((y + i) < SIZE_FULL)
                                 {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
-                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         }
@@ -831,11 +830,9 @@ public class TerrainManager : MonoBehaviour
                                 if ((y + i) > 0)
                                 {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
-                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         }
-                        //terrainTypeGrid[x, y] = eyedropperColour;
                     }
                     // Not on a border colouring
                     else
@@ -880,7 +877,6 @@ public class TerrainManager : MonoBehaviour
                             if ((x + i) < SIZE_FULL)
                             {
                                 terrainTypeGrid[x + i, y] = eyedropperColour;
-                                //terrainTypeGrid[x + i, y] = Color.magenta;
                             }
                         }
                     }
@@ -893,7 +889,6 @@ public class TerrainManager : MonoBehaviour
                             if ((x + i) > 0)
                             {
                                 terrainTypeGrid[x + i, y] = eyedropperColour;
-                                //terrainTypeGrid[x + i, y] = Color.magenta;
                             }
                         }
                     }
