@@ -17,11 +17,25 @@ public class TerrainManager : MonoBehaviour
     //Resolution of Terrain Grid & Height Map
     public const float SIZE_FULL = 2049.0f; //Resolution of the height map texture
 
+    /* ------------------------------------------------------------------ */
+    /* INPUT MAP VARIABLES */
+    /* ------------------------------------------------------------------ */
+
     // inputMapTextureDim * inputMapTextureDim pixels is the size of the user defined 2D map. We expect a square texture.
     private int inputMapTextureDim = 20;
     // Our user defined and provided 2D tiled map as a texture2D
     public Texture2D inputMapTexture;
-    private Color[,] inputMapGrid;
+    private Color[, ] inputMapGrid;
+
+    /* ------------------------------------------------------------------ */
+    /* TERRAIN TYPE VARIABLES */
+    /* ------------------------------------------------------------------ */
+
+    // terrainTypeGrid holds the values that determine the terrain type weighting for any point in the 3D landscape. This is a crucial variable for the functionality of the program.
+    private Color[, ] terrainTypeGrid = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
+
+    // Modifies the degree of border warping between terrain type areas
+    private const int terrainBorderShiftMod = 200;
 
     // Variables to adjust the Colour correction function's tolerance for minor differences in Color type property values in the input that would be unoticeable to the naked eye.
     // Determines how close to equal the RGB values need to be.
@@ -31,20 +45,32 @@ public class TerrainManager : MonoBehaviour
     // Determines the value at which green must at least be to be considered Grassland.
     private const float greenGrasslandTolerance = 0.9f;
 
-    // Variables for the terrain type blending <-- USE THIS FOR TERRAIN COLOURS
-    public Color[,] terrainTypeGrid = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
-    // Modifies the degree of border warping between terrain type areas
-    private const int terrainBorderShiftMod = 200;
+    /* ------------------------------------------------------------------ */
+    /* BLUR VARIABLES */
+    /* ------------------------------------------------------------------ */
 
-    // There is significant computational resource consumption on increasing the size of a blur, it's radius/dimensions. Consider increasing the number of passes.
+    // Flag for whether or not pseudo-Gaussian blurring should execute. This is likely preferable over true Gaussian/Box blurring due to time complexity.
+    private const bool doPseudoGaussBlur = true;
+
+    // Pseudo Gaussian blur variables, runs in linear time, O(n) where n = number of pixels. Sigma determines the degree of blurring applied to terrainTypeGrid. There is a very small percentage margin or error on pixels.
+    private const float pseudoGaussSigma = 10.0f;
+
+    // Flag variables for whether true Gaussian, in index 0, and/or true Box, in index 1, should execute. By default, these are assigned values of false due to the computational load that true Gaussian/Box blurring requires.
+    private static bool[] doGaussAndOrThenBoxBlur = new bool[] { false, false };
+
+    // True Gaussian blur variables, runs in exponential time, O(n^2 + r^2) where n = number of pixels and r is the kernel size. Consider using pseudo-Gaussian blur or increasing the number of passes instead of increasing the size of the kernel.
+    private float[, ] trueGaussBlurKernel;
+    private const int trueGaussBlurKernelDimNxN = 3;
+    private const float trueGaussSigma = 0.5f;
+    private const int trueGaussNumPasses = 3;
+
+    // True Box blur variables, runs in exponential time, O(n^2 + r^2) where n = number of pixels and r is the kernel size. Consider using pseudo-Gaussian blur or increasing the number of passes instead of increasing the size of the kernel.
     private const int boxBlurKernelDimNxN = 3;
-    private const int BOX_BLUR_PASSES = 25;
-    // First bool is a flag for the Gaussian blur, the second is for Box blur.
-    private static bool[] doGaussAndOrBoxBlur = new bool[] { false, true };
-    private float[,] gaussConvBlurKernel;
-    private const int gaussBlurKernelDimNxN = 3;
-    private const float sigmaWeight = 30.0f;
-    private const int GAUSS_BLUR_PASSES = 3;
+    private const int boxBlurNumPasses = 3;
+
+    /* ------------------------------------------------------------------ */
+    /* MINIMAP GUI VARIABLES FOR TERRAIN TYPES & HEIGHT */
+    /* ------------------------------------------------------------------ */
 
     // Terrain type grid texture for terrainTypeMiniMap
     private Texture2D terrainTypeTexture;
@@ -55,16 +81,16 @@ public class TerrainManager : MonoBehaviour
     private Material perlinNoiseMaterial;
 
     // Perlin Noise Arrays.
-    float[,] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
-    float[,] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
-    float[,] perlinNoiseArrayMBasePass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayMBasePass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     //To be accessed by Water Manager
-    float[,] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
-    float[,] perlinNoiseArrayFinalizedFlipped = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayFinalizedFlipped = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     // For Individual Terrain Cell.
-    float[,] perlinNoiseArrayCell = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayCell = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     // Variables to hold the scene's terrain data
     public GameObject terrainObject;
@@ -85,9 +111,9 @@ public class TerrainManager : MonoBehaviour
         terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
 
         //Call Water Manager
-        waterManager = new GameObject().AddComponent(typeof(WaterManager)) as WaterManager;
+        waterManager = new GameObject().AddComponent(typeof(WaterManager))as WaterManager;
         waterManager.name = "WaterManager";
-        agentManager = new GameObject().AddComponent(typeof(AgentGenerator)) as AgentGenerator;
+        agentManager = new GameObject().AddComponent(typeof(AgentGenerator))as AgentGenerator;
         agentManager.name = "AgentManager";
 
         ClearNoise(perlinNoiseArray);
@@ -120,7 +146,7 @@ public class TerrainManager : MonoBehaviour
     }
 
     // Resets noise array to hold zeros.
-    void ClearNoise(float[,] noiseArray)
+    void ClearNoise(float[, ] noiseArray)
     {
         for (int y = 0; y < SIZE_FULL; y++)
         {
@@ -180,8 +206,8 @@ public class TerrainManager : MonoBehaviour
                 //else
                 //{
 
-                    //perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y];
-                    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (((perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y]) * terrainTypeGrid[x, y].a);
+                //perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y];
+                perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (((perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y]) * terrainTypeGrid[x, y].a);
 
                 //}
 
@@ -233,7 +259,6 @@ public class TerrainManager : MonoBehaviour
 
             }
         }
-
 
         //Set terrain height map
         terrainComponent = terrainObject.GetComponent<Terrain>();
@@ -415,7 +440,6 @@ public class TerrainManager : MonoBehaviour
         int smallestPoint2 = 0;
         List<int> maxNumPoints = new List<int>();
 
-
         for (int i = 0; i < xPointsMountainPeak.Count; i++)
         {
             for (int j = 0; j < xPointsMountainPeak.Count; j++)
@@ -454,7 +478,6 @@ public class TerrainManager : MonoBehaviour
             smallestPoint = 0;
             smallestPoint2 = 0;
         }
-
 
     }
 
@@ -543,7 +566,6 @@ public class TerrainManager : MonoBehaviour
                 }
             }
 
-
             try
             {
 
@@ -587,7 +609,6 @@ public class TerrainManager : MonoBehaviour
                     //{
                     //    perlinNoiseArrayMPass[(int)lineGradientXNormal + 3, (int)lineGradientYNormal] = j / size;
                     //}
-
 
                 }
 
@@ -633,7 +654,6 @@ public class TerrainManager : MonoBehaviour
                         perlinNoiseArrayMPass[(int)lineGradientXNormal + 1, (int)lineGradientYNormal] = j / size;
                     }
 
-
                     //if (perlinNoiseArrayMPass[(int)lineGradientXNormal + 2, (int)lineGradientYNormal] <= j / size)
                     //{
                     //    perlinNoiseArrayMPass[(int)lineGradientXNormal + 2, (int)lineGradientYNormal] = j / size;
@@ -674,7 +694,6 @@ public class TerrainManager : MonoBehaviour
                     }
                 }
 
-
                 if (Mathf.Sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2)) < 175)
                 {
                     if (perlinNoiseArrayMPass[x, y] < 1.0f - Mathf.Sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2)) / 175)
@@ -690,7 +709,7 @@ public class TerrainManager : MonoBehaviour
     }
 
     /* ------------------------------------------------------------------ */
-    /* TERRAIN TYPE MANIPULATION */
+    /* TERRAIN TYPE MANIPULATION BEFORE BLUR APPLICATION */
     /* The function implementations are ordered below as they are called. */
     /* ------------------------------------------------------------------ */
 
@@ -888,112 +907,112 @@ public class TerrainManager : MonoBehaviour
         return (int)((perlinShiftValue - 0.5f) * terrainBorderShiftMod);
     }
 
+    /* ------------------------------------------------------------------ */
+    /* CALL FUNCTIONS TO APPLY DIFFERENT BLUR ALGORITHMS */
+    /* ------------------------------------------------------------------ */
+
     // Calls the function that iterates over all terrain type cells BLUR_PASSES times.
     void ApplyBlurPasses()
     {
-
-        // If gaussBlurKernelDimNxN is 0 or less, then we shouldn't call the gauss blurring functions.
-        if (gaussBlurKernelDimNxN > 0)
+        if (doPseudoGaussBlur)
         {
-            //CreateConvBlurKernel();
+            PseudoGaussBlur();
         }
 
-        PseudoGaussBlur();
-            /* 
-            for (int i = 0; i < GAUSS_BLUR_PASSES; i++)
+        // If trueGaussBlurKernelDimNxN is 0 or less, then we shouldn't call the gauss blurring functions.
+        if (trueGaussBlurKernelDimNxN > 0 && doGaussAndOrThenBoxBlur[0])
+        {
+            CreateConvBlurKernel();
+            for (int i = 0; i < trueGaussNumPasses; i++)
             {
-                terrainTypeGrid = BlurTerrainBorders();
+                terrainTypeGrid = TrueGaussBlurTerrainBorders();
             }
-        
+        }
+
         // If boxBlurKernelDimNxN is 0 or less, then we shouldn't call the box blurring function.
-        if (boxBlurKernelDimNxN > 0)
+        if (boxBlurKernelDimNxN > 0 && doGaussAndOrThenBoxBlur[1])
         {
-            for (int i = 0; i < BOX_BLUR_PASSES; i++)
+            for (int i = 0; i < boxBlurNumPasses; i++)
             {
-                terrainTypeGrid = BlurTerrainBorders();
+                terrainTypeGrid = BoxBlurTerrainBorders();
             }
         }
-        */
-
-        
     }
 
-    // Builds a kernel of size gaussBlurKernelDimNxN * gaussBlurKernelDimNxN using the formula for gaussian kernels.
+    /* ------------------------------------------------------------------ */
+    /* TRUE GAUSSIAN AND BOX BLUR FUNCTIONS */
+    /* The function implementations are ordered below as they are called. */
+    /* ------------------------------------------------------------------ */
+
+    // Builds a kernel of size trueGaussBlurKernelDimNxN * trueGaussBlurKernelDimNxN using the formula for Gaussian kernels.
     void CreateConvBlurKernel()
     {
-        gaussConvBlurKernel = new float[gaussBlurKernelDimNxN, gaussBlurKernelDimNxN];
+        trueGaussBlurKernel = new float[trueGaussBlurKernelDimNxN, trueGaussBlurKernelDimNxN];
         float sumKernel = 0.0f;
-        for (int x = -((gaussBlurKernelDimNxN - 1) / 2); x < ((gaussBlurKernelDimNxN + 1) / 2); x++)
+        for (int x = -((trueGaussBlurKernelDimNxN - 1) / 2); x < ((trueGaussBlurKernelDimNxN + 1) / 2); x++)
         {
-            for (int y = -((gaussBlurKernelDimNxN - 1) / 2); y < ((gaussBlurKernelDimNxN + 1) / 2); y++)
+            for (int y = -((trueGaussBlurKernelDimNxN - 1) / 2); y < ((trueGaussBlurKernelDimNxN + 1) / 2); y++)
             {
-                gaussConvBlurKernel[x + ((gaussBlurKernelDimNxN - 1) / 2), y + ((gaussBlurKernelDimNxN - 1) / 2)] = GetGaussianKernelValue(System.Math.Abs(x), System.Math.Abs(y));
-                sumKernel += gaussConvBlurKernel[x + ((gaussBlurKernelDimNxN - 1) / 2), y + ((gaussBlurKernelDimNxN - 1) / 2)];
+                trueGaussBlurKernel[x + ((trueGaussBlurKernelDimNxN - 1) / 2), y + ((trueGaussBlurKernelDimNxN - 1) / 2)] = GetGaussianKernelValue(System.Math.Abs(x), System.Math.Abs(y));
+                sumKernel += trueGaussBlurKernel[x + ((trueGaussBlurKernelDimNxN - 1) / 2), y + ((trueGaussBlurKernelDimNxN - 1) / 2)];
             }
         }
         float kernelMustBeSummedToOne = 1.0f / sumKernel;
-        for (int x = 0; x < gaussBlurKernelDimNxN; x++)
+        for (int x = 0; x < trueGaussBlurKernelDimNxN; x++)
         {
-            for (int y = 0; y < gaussBlurKernelDimNxN; y++)
+            for (int y = 0; y < trueGaussBlurKernelDimNxN; y++)
             {
-                gaussConvBlurKernel[x, y] = gaussConvBlurKernel[x, y] * kernelMustBeSummedToOne;
+                trueGaussBlurKernel[x, y] = trueGaussBlurKernel[x, y] * kernelMustBeSummedToOne;
             }
         }
     }
 
-    // Given an offset location from the centre cell of the kernel, return the value for the offset location's cell using the gaussian formula.
+    // Given an offset location from the centre cell of the kernel, return the value for the offset location's cell using the Gaussian formula.
     float GetGaussianKernelValue(float xOffset, float yOffset)
     {
-        return (float)(1.0f / (2.0f * Mathf.PI * Mathf.Pow(sigmaWeight, 2.0f))) * Mathf.Pow((float)System.Math.E, -((Mathf.Pow(xOffset, 2.0f) + Mathf.Pow(yOffset, 2.0f)) / (2.0f * Mathf.PI * Mathf.Pow(sigmaWeight, 2.0f))));
+        return (float)(1.0f / (2.0f * Mathf.PI * Mathf.Pow(trueGaussSigma, 2.0f))) * Mathf.Pow((float)System.Math.E, -((Mathf.Pow(xOffset, 2.0f) + Mathf.Pow(yOffset, 2.0f)) / (2.0f * Mathf.PI * Mathf.Pow(trueGaussSigma, 2.0f))));
     }
 
-    // Iterates over all terrain type cells calling the blur function for a single cell's kernel.
-    Color[,] BlurTerrainBorders()
+    // Iterates over all terrain type cells calling the Gaussian blur function for a single cell's kernel.
+    Color[, ] TrueGaussBlurTerrainBorders()
     {
-        
-        Color[,] blurTerrain = terrainTypeGrid;
-        //Check if either blur type has been specified to execute. Otherwise the above blurTerrain will be returned unchanged as equal to terrainTypeGrid.
-        if (doGaussAndOrBoxBlur[0] == true || doGaussAndOrBoxBlur[1] == true)
+        Color[, ] blurTerrain = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
+        for (int x = 0; x < SIZE_FULL; x++)
         {
-            blurTerrain = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
-        }
-        // Perform the Gaussian blur if true.
-        if (doGaussAndOrBoxBlur[0] == true)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
+            for (int y = 0; y < SIZE_FULL; y++)
             {
-                for (int y = 0; y < SIZE_FULL; y++)
-                {
-                    blurTerrain[x, y] = ApplyGaussConvKernelToCell(x, y);
-                }
-            }
-        }
-        // Perform the Box blur if true.
-        if (doGaussAndOrBoxBlur[1] == true)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
-                for (int y = 0; y < SIZE_FULL; y++)
-                {
-                    blurTerrain[x, y] = ApplyBoxBlurConvKernelToCell(x, y);
-                }
+                blurTerrain[x, y] = ApplyGaussConvKernelToCell(x, y);
             }
         }
         return blurTerrain;
     }
 
-    // Returns a new Color using the weights in the built gaussConvBlurKernel[].
+    // Iterates over all terrain type cells calling the Box blur function for a single cell's kernel.
+    Color[, ] BoxBlurTerrainBorders()
+    {
+        Color[, ] blurTerrain = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
+        for (int x = 0; x < SIZE_FULL; x++)
+        {
+            for (int y = 0; y < SIZE_FULL; y++)
+            {
+                blurTerrain[x, y] = ApplyBoxBlurConvKernelToCell(x, y);
+            }
+        }
+        return blurTerrain;
+    }
+
+    // Returns a new Color using the weights in the built trueGaussBlurKernel[].
     Color ApplyGaussConvKernelToCell(int xCoord, int yCoord)
     {
         Color newWeight = new Color(0.0f, 0.0f, 0.0f, 0.0f);
         int numContributors = 0;
-        for (int x = -((gaussBlurKernelDimNxN - 1) / 2); x < ((gaussBlurKernelDimNxN + 1) / 2); x++)
+        for (int x = -((trueGaussBlurKernelDimNxN - 1) / 2); x < ((trueGaussBlurKernelDimNxN + 1) / 2); x++)
         {
-            for (int y = -((gaussBlurKernelDimNxN - 1) / 2); y < ((gaussBlurKernelDimNxN + 1) / 2); y++)
+            for (int y = -((trueGaussBlurKernelDimNxN - 1) / 2); y < ((trueGaussBlurKernelDimNxN + 1) / 2); y++)
             {
                 if (xCoord + x >= 0 && xCoord + x < SIZE_FULL && yCoord + y >= 0 && yCoord + y < SIZE_FULL)
                 {
-                    newWeight += terrainTypeGrid[xCoord + x, yCoord + y] * gaussConvBlurKernel[x + ((gaussBlurKernelDimNxN - 1) / 2), y + ((gaussBlurKernelDimNxN - 1) / 2)];
+                    newWeight += terrainTypeGrid[xCoord + x, yCoord + y] * trueGaussBlurKernel[x + ((trueGaussBlurKernelDimNxN - 1) / 2), y + ((trueGaussBlurKernelDimNxN - 1) / 2)];
                 }
             }
         }
@@ -1021,394 +1040,245 @@ public class TerrainManager : MonoBehaviour
 
     /* ------------------------------------------------------------------ */
     /* IVAN KUTSKIR ADAPTED "GAUSSIAN" BLUR */
+    /* Heavily modified and improved adaptation of Ivan Kutskir's "Fastest Gaussian Blur" article. http://blog.ivank.net/fastest-gaussian-blur.html */
+    /* The function implementations are ordered below as they are called. */
     /* ------------------------------------------------------------------ */
-    // http://blog.ivank.net/fastest-gaussian-blur.html
 
-
-    float[] BoxesForGauss(float sigma, float numBoxes){
-        float wl = Mathf.Floor(Mathf.Sqrt((12.0f*sigma*sigma/numBoxes)+1.0f));
-        if (wl % 2.0f == 0.0f){
-            wl--;
-        }
-        float wu = wl + 2.0f;
-
-        float m = Mathf.Round((12.0f*sigma*sigma - numBoxes*wl*wl - 4.0f*numBoxes*wl - 3.0f*numBoxes)/(-4.0f*wl-4.0f));
-
-        float[] dimOfBoxes = new float[(int)numBoxes];
-        for (int i = 0; i < numBoxes; i++)
-        {
-            if (i < m){
-                dimOfBoxes[i] =wl;
-            } else {
-                dimOfBoxes[i] =wu;
-            }
-        }
-        return dimOfBoxes;
+    // Flattens terrainTypeGrid into a 1D array for the algorithm, determines the "ideal" 3 kernel sizes for the 3 passes of box blur that approximate a Gaussian blur, calls a modified box blur 3 times, then unflattens the array back to a 2D array.
+    void PseudoGaussBlur()
+    {
+        Color[] source = Flatten2DTerrainTypeGrid(terrainTypeGrid);
+        Color[] target = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
+        float[] boxKernelDims = GetPseudoGaussKernelDims(pseudoGaussSigma, 3.0f);
+        target = PseudoGaussBlurTotal(source, target, (boxKernelDims[0] - 1.0f) / 2.0f);
+        source = PseudoGaussBlurTotal(target, source, (boxKernelDims[1] - 1.0f) / 2.0f);
+        target = PseudoGaussBlurTotal(source, target, (boxKernelDims[2] - 1.0f) / 2.0f);
+        terrainTypeGrid = Unflatten2DTerrainTypeGrid(target);
     }
 
-    Color[] Flatten2DTerrainArray(Color[,] array2D){
+    // Takes terrainTypeGrid as a 2D array and returns it in the form of a 1D array
+    Color[] Flatten2DTerrainTypeGrid(Color[, ] array2D)
+    {
         Color[] flattenedArray = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
         for (int i = 0; i < (int)SIZE_FULL; i++)
         {
             for (int n = 0; n < (int)SIZE_FULL; n++)
             {
-                flattenedArray[i*(int)SIZE_FULL+n] = array2D[i,n];
+                flattenedArray[i * (int)SIZE_FULL + n] = array2D[i, n];
             }
         }
         return flattenedArray;
     }
 
-    Color[,] Unflatten2DTerrainArray(Color[] array1D){
-        Color[,] unflattenedArray = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
-        for (int i = 0; i < (int)SIZE_FULL; i++)
+    // Given a standard deviation, sigma, returns an array of kernel sizes for the box blurs.
+    float[] GetPseudoGaussKernelDims(float sigma, float numBoxes)
+    {
+        float wl = Mathf.Floor(Mathf.Sqrt((12.0f * sigma * sigma / numBoxes) + 1.0f));
+        if (wl % 2.0f == 0.0f)
         {
-            for (int n = 0; n < (int)SIZE_FULL; n++)
+            wl--;
+        }
+        float wu = wl + 2.0f;
+
+        float m = Mathf.Round((12.0f * sigma * sigma - numBoxes * wl * wl - 4.0f * numBoxes * wl - 3.0f * numBoxes) / (-4.0f * wl - 4.0f));
+
+        float[] dimOfBoxes = new float[(int)numBoxes];
+        for (int i = 0; i < numBoxes; i++)
+        {
+            if (i < m)
             {
-                unflattenedArray[i,n] = CorrectBlurredColour(array1D[i*(int)SIZE_FULL+n]);
-                //print(unflattenedArray[i,n]);
+                dimOfBoxes[i] = wl;
+            }
+            else
+            {
+                dimOfBoxes[i] = wu;
             }
         }
-        return unflattenedArray;
+        return dimOfBoxes;
     }
 
-    Color CorrectBlurredColour(Color inputColor){
-        float sum = 0.0f;
-        for (int i = 0; i < 4; i++)
-        {
-            if (inputColor[i] > 0.0f){
-                sum += inputColor[i];
-            }
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            if (inputColor[i] > 0.0f){
-                inputColor[i] = inputColor[i] / sum;
-            } else {
-                inputColor[i] = 0.0f;
-            }
-        }
-        return inputColor;
-    }
-
-    void PseudoGaussBlur(){
-        Color[] source = Flatten2DTerrainArray(terrainTypeGrid);
-        Color[] target = new Color[(int)SIZE_FULL * (int)SIZE_FULL];
-        float[] boxKernelDims = BoxesForGauss(sigmaWeight, 3.0f);
-        for (int i = 0; i < boxKernelDims.Length; i++)
-        {
-            print(boxKernelDims[i]);
-        }
-        print(boxKernelDims.Length);
-
-        target = PseudoGausBlurTotal(source, target, (boxKernelDims[0]-1.0f)/2.0f);
-        source = PseudoGausBlurTotal(target, source, (boxKernelDims[1]-1.0f)/2.0f);
-        target = PseudoGausBlurTotal(source, target, (boxKernelDims[2]-1.0f)/2.0f);
-        terrainTypeGrid = Unflatten2DTerrainArray(target);
-        /* 
-        for (int i = 0; i < SIZE_FULL; i += 20)
-        {
-            print(terrainTypeGrid[i,0]);
-        }
-        */
-
-    }
-
-    Color[] PseudoGausBlurTotal(Color[] sourceArray, Color[] targetArray, float box){
+    // Box blur is seperable, so we can blur horizontally then vertically and have the same result as if they were done at the same time.
+    Color[] PseudoGaussBlurTotal(Color[] sourceArray, Color[] targetArray, float kernelRadius)
+    {
         targetArray = sourceArray;
-        PseudoGaussBlurHor(targetArray, sourceArray, box);
-        PseudoGaussBlurVert(sourceArray, targetArray, box);
+        PseudoGaussBlurHor(targetArray, sourceArray, kernelRadius);
+        PseudoGaussBlurVert(sourceArray, targetArray, kernelRadius);
         return targetArray;
     }
 
-
-    void PseudoGaussBlurHor(Color[] sourceArray, Color[] targetArray, float r){
-        float iArr = 1 / (r + r + 1);
+    // Blurs across the sourceArray horizontally placing the new values in targetArray.
+    void PseudoGaussBlurHor(Color[] sourceArray, Color[] targetArray, float kernelRadius)
+    {
+        float iArr = 1 / (2.0f * kernelRadius + 1);
         for (int i = 0; i < (int)SIZE_FULL; i++)
         {
             float ti = i * SIZE_FULL;
             float li = ti;
-            float ri = ti+r;
+            float ri = ti + kernelRadius;
             float fvR = sourceArray[(int)ti].r;
             float fvG = sourceArray[(int)ti].g;
             float fvB = sourceArray[(int)ti].b;
             float fvA = sourceArray[(int)ti].a;
-            float lvR = sourceArray[(int)ti+(int)SIZE_FULL-1].r;
-            float lvG = sourceArray[(int)ti+(int)SIZE_FULL-1].g;
-            float lvB = sourceArray[(int)ti+(int)SIZE_FULL-1].b;
-            float lvA = sourceArray[(int)ti+(int)SIZE_FULL-1].a;
-            float valueR = (r+1)*fvR;
-            float valueG = (r+1)*fvG;
-            float valueB = (r+1)*fvB;
-            float valueA = (r+1)*fvA;
-            for (int j = 0; j < r; j++)
+            float lvR = sourceArray[(int)ti + (int)SIZE_FULL - 1].r;
+            float lvG = sourceArray[(int)ti + (int)SIZE_FULL - 1].g;
+            float lvB = sourceArray[(int)ti + (int)SIZE_FULL - 1].b;
+            float lvA = sourceArray[(int)ti + (int)SIZE_FULL - 1].a;
+            float valueR = (kernelRadius + 1) * fvR;
+            float valueG = (kernelRadius + 1) * fvG;
+            float valueB = (kernelRadius + 1) * fvB;
+            float valueA = (kernelRadius + 1) * fvA;
+            for (int j = 0; j < kernelRadius; j++)
             {
-                valueR += sourceArray[(int)ti+j].r;
-                valueG += sourceArray[(int)ti+j].g;
-                valueB += sourceArray[(int)ti+j].b;
-                valueA += sourceArray[(int)ti+j].a; 
+                valueR += sourceArray[(int)ti + j].r;
+                valueG += sourceArray[(int)ti + j].g;
+                valueB += sourceArray[(int)ti + j].b;
+                valueA += sourceArray[(int)ti + j].a;
             }
-            for (int j = 0; j <= r; j++)
+            for (int j = 0; j <= kernelRadius; j++)
+            {
+                valueR += sourceArray[(int)ri].r - fvR;
+                valueG += sourceArray[(int)ri].g - fvG;
+                valueB += sourceArray[(int)ri].b - fvB;
+                valueA += sourceArray[(int)ri++].a - fvA;
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti++].a = valueA * iArr;
+            }
+            for (int j = (int)kernelRadius + 1; j < SIZE_FULL - kernelRadius; j++)
+            {
+                valueR += sourceArray[(int)ri].r - sourceArray[(int)li].r;
+                valueG += sourceArray[(int)ri].g - sourceArray[(int)li].g;
+                valueB += sourceArray[(int)ri].b - sourceArray[(int)li].b;
+                valueA += sourceArray[(int)ri++].a - sourceArray[(int)li++].a;
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti++].a = valueA * iArr;
+            }
+            for (int j = (int)SIZE_FULL - (int)kernelRadius; j < SIZE_FULL; j++)
+            {
+                valueR += lvR - sourceArray[(int)li].r;
+                valueG += lvG - sourceArray[(int)li].g;
+                valueB += lvB - sourceArray[(int)li].b;
+                valueA += lvA - sourceArray[(int)li++].a;
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti++].a = valueA * iArr;
+            }
+        }
+    }
+
+    // Blurs across the sourceArray vertically placing the new values in targetArray.
+    void PseudoGaussBlurVert(Color[] sourceArray, Color[] targetArray, float kernelRadius)
+    {
+        float iArr = 1.0f / (2.0f * kernelRadius + 1);
+        for (int i = 0; i < (int)SIZE_FULL; i++)
+        {
+            float ti = i;
+            float li = ti;
+            float ri = ti + kernelRadius * SIZE_FULL;
+            float fvR = sourceArray[(int)ti].r;
+            float fvG = sourceArray[(int)ti].g;
+            float fvB = sourceArray[(int)ti].b;
+            float fvA = sourceArray[(int)ti].a;
+            float lvR = sourceArray[(int)ti + (int)SIZE_FULL * ((int)SIZE_FULL - 1)].r;
+            float lvG = sourceArray[(int)ti + (int)SIZE_FULL * ((int)SIZE_FULL - 1)].g;
+            float lvB = sourceArray[(int)ti + (int)SIZE_FULL * ((int)SIZE_FULL - 1)].b;
+            float lvA = sourceArray[(int)ti + (int)SIZE_FULL * ((int)SIZE_FULL - 1)].a;
+            float valueR = (kernelRadius + 1) * fvR;
+            float valueG = (kernelRadius + 1) * fvG;
+            float valueB = (kernelRadius + 1) * fvB;
+            float valueA = (kernelRadius + 1) * fvA;
+            for (int j = 0; j < kernelRadius; j++)
+            {
+                valueR += sourceArray[(int)ti + j * (int)SIZE_FULL].r;
+                valueG += sourceArray[(int)ti + j * (int)SIZE_FULL].g;
+                valueB += sourceArray[(int)ti + j * (int)SIZE_FULL].b;
+                valueA += sourceArray[(int)ti + j * (int)SIZE_FULL].a;
+            }
+            for (int j = 0; j <= kernelRadius; j++)
             {
                 valueR += sourceArray[(int)ri].r - fvR;
                 valueG += sourceArray[(int)ri].g - fvG;
                 valueB += sourceArray[(int)ri].b - fvB;
                 valueA += sourceArray[(int)ri].a - fvA;
-                ri++;
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;
-                //print(targetArray[(int)ti]);
-                ti++;
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti].a = valueA * iArr;
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
             }
-            for (int j = (int)r+1; j < SIZE_FULL-r; j++)
+            for (int j = (int)kernelRadius + 1; j < (int)SIZE_FULL - kernelRadius; j++)
             {
                 valueR += sourceArray[(int)ri].r - sourceArray[(int)li].r;
                 valueG += sourceArray[(int)ri].g - sourceArray[(int)li].g;
                 valueB += sourceArray[(int)ri].b - sourceArray[(int)li].b;
                 valueA += sourceArray[(int)ri].a - sourceArray[(int)li].a;
-                ri++;
-                li++;
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;  
-                //print(targetArray[(int)ti]);    
-                ti++;      
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti].a = valueA * iArr;
+                li += SIZE_FULL;
+                ri += SIZE_FULL;
+                ti += SIZE_FULL;
             }
-            for (int j = (int)SIZE_FULL-(int)r; j < SIZE_FULL; j++)
+            for (int j = (int)SIZE_FULL - (int)kernelRadius; j < (int)SIZE_FULL; j++)
             {
                 valueR += lvR - sourceArray[(int)li].r;
                 valueG += lvG - sourceArray[(int)li].g;
                 valueB += lvB - sourceArray[(int)li].b;
                 valueA += lvA - sourceArray[(int)li].a;
-                li++;
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;
-                //print(targetArray[(int)ti]);
-                ti++;
-            }
-        }
-    }
-
-    void PseudoGaussBlurVert(Color[] sourceArray, Color[] targetArray, float r){
-        float iArr = 1.0f / (2.0f * r + 1);
-        for (int i = 0; i < (int)SIZE_FULL; i++)
-        {
-            float ti = i;
-            float li = ti;
-            float ri = ti + r * SIZE_FULL;
-            float fvR = sourceArray[(int)ti].r;
-            float fvG = sourceArray[(int)ti].g;
-            float fvB = sourceArray[(int)ti].b;
-            float fvA = sourceArray[(int)ti].a;
-            float lvR = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].r;
-            float lvG = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].g;
-            float lvB = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].b;
-            float lvA = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].a;
-            float valueR = (r+1)*fvR;
-            float valueG = (r+1)*fvG;
-            float valueB = (r+1)*fvB;
-            float valueA = (r+1)*fvA;
-            for (int j = 0; j < r; j++)
-            {
-                valueR += sourceArray[(int)ti+j*(int)SIZE_FULL].r;
-                valueG += sourceArray[(int)ti+j*(int)SIZE_FULL].g;
-                valueB += sourceArray[(int)ti+j*(int)SIZE_FULL].b;
-                valueA += sourceArray[(int)ti+j*(int)SIZE_FULL].a;                 
-            }
-            for (int j = 0; j <= r; j++)
-            {
-                valueR += sourceArray[(int)ri].r - fvR;
-                valueG += sourceArray[(int)ri].g - fvG;
-                valueB += sourceArray[(int)ri].b - fvB;
-                valueA += sourceArray[(int)ri].a - fvA;   
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;
-                //print(targetArray[(int)ti]);
-                ri += SIZE_FULL;
-                ti += SIZE_FULL;
-            }
-            for (int j = (int)r+1; j < (int)SIZE_FULL-r; j++)
-            {
-                valueR += sourceArray[(int)ri].r - sourceArray[(int)li].r;
-                valueG += sourceArray[(int)ri].g - sourceArray[(int)li].g;
-                valueB += sourceArray[(int)ri].b - sourceArray[(int)li].b;
-                valueA += sourceArray[(int)ri].a - sourceArray[(int)li].a;
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;
-                //print(targetArray[(int)ti]);
-                li += SIZE_FULL;
-                ri += SIZE_FULL;
-                ti += SIZE_FULL;
-            }
-            for (int j = (int)SIZE_FULL-(int)r; j < (int)SIZE_FULL; j++)
-            {
-                valueR += lvR - sourceArray[(int)li].r;
-                valueG += lvG - sourceArray[(int)li].g;
-                valueB += lvB - sourceArray[(int)li].b;
-                valueA += lvA - sourceArray[(int)li].a;
-                targetArray[(int)ti].r = valueR*iArr;
-                targetArray[(int)ti].g = valueG*iArr;
-                targetArray[(int)ti].b = valueB*iArr;
-                targetArray[(int)ti].a = valueA*iArr;
-                //print(targetArray[(int)ti]);
+                targetArray[(int)ti].r = valueR * iArr;
+                targetArray[(int)ti].g = valueG * iArr;
+                targetArray[(int)ti].b = valueB * iArr;
+                targetArray[(int)ti].a = valueA * iArr;
                 li += SIZE_FULL;
                 ti += SIZE_FULL;
             }
         }
     }
 
-    /*  void PseudoGaussBlurHor(Color32[] sourceArray, Color32[] targetArray, int r){
-        float iArr = 1 / (r + r + 1);
+    // Takes terrainTypeGrid as a 1D array and returns it in the form of a 2D array while correcting for negative values coming from the algorithms margin of error.
+    Color[, ] Unflatten2DTerrainTypeGrid(Color[] array1D)
+    {
+        Color[, ] unflattenedArray = new Color[(int)SIZE_FULL, (int)SIZE_FULL];
         for (int i = 0; i < (int)SIZE_FULL; i++)
         {
-            float ti = i * SIZE_FULL;
-            float li = ti;
-            float ri = ti+r;
-            byte fvR = sourceArray[(int)ti].r;
-            byte fvG = sourceArray[(int)ti].g;
-            byte fvB = sourceArray[(int)ti].b;
-            byte fvA = sourceArray[(int)ti].a;
-            byte lvR = sourceArray[(int)ti+(int)SIZE_FULL-1].r;
-            byte lvG = sourceArray[(int)ti+(int)SIZE_FULL-1].g;
-            byte lvB = sourceArray[(int)ti+(int)SIZE_FULL-1].b;
-            byte lvA = sourceArray[(int)ti+(int)SIZE_FULL-1].a;
-            byte valueR = (byte)((r+1)*fvR);
-            byte valueG = (byte)((r+1)*fvG);
-            byte valueB = (byte)((r+1)*fvB);
-            byte valueA = (byte)((r+1)*fvA);
-            for (int j = 0; j < r; j++)
+            for (int n = 0; n < (int)SIZE_FULL; n++)
             {
-                valueR += sourceArray[(int)ti+j].r;
-                valueG += sourceArray[(int)ti+j].g;
-                valueB += sourceArray[(int)ti+j].b;
-                valueA += sourceArray[(int)ti+j].a; 
-            }
-            for (int j = 0; j <= r; j++)
-            {
-                valueR += (byte)(sourceArray[(int)ri].r - fvR);
-                valueG += (byte)(sourceArray[(int)ri].g - fvG);
-                valueB += (byte)(sourceArray[(int)ri].b - fvB);
-                valueA += (byte)(sourceArray[(int)ri].a - fvA);
-                ri++;
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
-                //print(targetArray[(int)ti]);
-                ti++;
-            }
-            for (int j = (int)r+1; j < SIZE_FULL-r; j++)
-            {
-                valueR += (byte)(sourceArray[(int)ri].r - sourceArray[(int)li].r);
-                valueG += (byte)(sourceArray[(int)ri].g - sourceArray[(int)li].g);
-                valueB += (byte)(sourceArray[(int)ri].b - sourceArray[(int)li].b);
-                valueA += (byte)(sourceArray[(int)ri].a - sourceArray[(int)li].a);
-                ri++;
-                li++;
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr); 
-                //print(targetArray[(int)ti]);    
-                ti++;      
-            }
-            for (int j = (int)SIZE_FULL-(int)r; j < SIZE_FULL; j++)
-            {
-                valueR += (byte)(lvR - sourceArray[(int)li].r);
-                valueG += (byte)(lvG - sourceArray[(int)li].g);
-                valueB += (byte)(lvB - sourceArray[(int)li].b);
-                valueA += (byte)(lvA - sourceArray[(int)li].a);
-                li++;
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
-                //print(targetArray[(int)ti]);
-                ti++;
+                unflattenedArray[i, n] = CorrectBlurredColour(array1D[i * (int)SIZE_FULL + n]);
             }
         }
+        return unflattenedArray;
     }
 
-    void PseudoGaussBlurVert(Color32[] sourceArray, Color32[] targetArray, float r){
-        float iArr = 1.0f / (2.0f * r + 1);
-        for (int i = 0; i < (int)SIZE_FULL; i++)
+    // Ensures no negative values are present in the Color type and that all weights sum to 1.
+    Color CorrectBlurredColour(Color inputColor)
+    {
+        float sum = 0.0f;
+        for (int i = 0; i < 4; i++)
         {
-            float ti = i;
-            float li = ti;
-            float ri = ti + r * SIZE_FULL;
-            byte fvR = sourceArray[(int)ti].r;
-            byte fvG = sourceArray[(int)ti].g;
-            byte fvB = sourceArray[(int)ti].b;
-            byte fvA = sourceArray[(int)ti].a;
-            byte lvR = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].r;
-            byte lvG = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].g;
-            byte lvB = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].b;
-            byte lvA = sourceArray[(int)ti+(int)SIZE_FULL*((int)SIZE_FULL-1)].a;
-            byte valueR = (byte)((r+1)*fvR);
-            byte valueG = (byte)((r+1)*fvG);
-            byte valueB = (byte)((r+1)*fvB);
-            byte valueA = (byte)((r+1)*fvA);
-            for (int j = 0; j < r; j++)
+            if (inputColor[i] > 0.0f)
             {
-                valueR += sourceArray[(int)ti+j*(int)SIZE_FULL].r;
-                valueG += sourceArray[(int)ti+j*(int)SIZE_FULL].g;
-                valueB += sourceArray[(int)ti+j*(int)SIZE_FULL].b;
-                valueA += sourceArray[(int)ti+j*(int)SIZE_FULL].a;                 
-            }
-            for (int j = 0; j <= r; j++)
-            {
-                valueR += (byte)(sourceArray[(int)ri].r - fvR);
-                valueG += (byte)(sourceArray[(int)ri].g - fvG);
-                valueB += (byte)(sourceArray[(int)ri].b - fvB);
-                valueA += (byte)(sourceArray[(int)ri].a - fvA);   
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
-                //print(targetArray[(int)ti]);
-                ri += SIZE_FULL;
-                ti += SIZE_FULL;
-            }
-            for (int j = (int)r+1; j < (int)SIZE_FULL-r; j++)
-            {
-                valueR += (byte)(sourceArray[(int)ri].r - sourceArray[(int)li].r);
-                valueG += (byte)(sourceArray[(int)ri].g - sourceArray[(int)li].g);
-                valueB += (byte)(sourceArray[(int)ri].b - sourceArray[(int)li].b);
-                valueA += (byte)(sourceArray[(int)ri].a - sourceArray[(int)li].a);
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
-                //print(targetArray[(int)ti]);
-                li += SIZE_FULL;
-                ri += SIZE_FULL;
-                ti += SIZE_FULL;
-            }
-            for (int j = (int)SIZE_FULL-(int)r; j < (int)SIZE_FULL; j++)
-            {
-                valueR += (byte)(lvR - sourceArray[(int)li].r);
-                valueG += (byte)(lvG - sourceArray[(int)li].g);
-                valueB += (byte)(lvB - sourceArray[(int)li].b);
-                valueA += (byte)(lvA - sourceArray[(int)li].a);
-                targetArray[(int)ti].r = (byte)Mathf.RoundToInt(valueR*iArr);
-                targetArray[(int)ti].g = (byte)Mathf.RoundToInt(valueG*iArr);
-                targetArray[(int)ti].b = (byte)Mathf.RoundToInt(valueB*iArr);
-                targetArray[(int)ti].a = (byte)Mathf.RoundToInt(valueA*iArr);
-                //print(targetArray[(int)ti]);
-                li += SIZE_FULL;
-                ti += SIZE_FULL;
+                sum += inputColor[i];
             }
         }
-    } */
-
+        for (int i = 0; i < 4; i++)
+        {
+            if (inputColor[i] > 0.0f)
+            {
+                inputColor[i] = inputColor[i] / sum;
+            }
+            else
+            {
+                inputColor[i] = 0.0f;
+            }
+        }
+        return inputColor;
+    }
 
     /* ------------------------------------------------------------------ */
     /* GETTERS & SETTERS */
@@ -1419,9 +1289,10 @@ public class TerrainManager : MonoBehaviour
         return terrainTypeTexture;
     }
 
-    public Color[,] GetTerrainTypeGrid()
+    public Color GetTerrainTypeGridValueAt(int x, int y)
     {
-        return terrainTypeGrid;
+        Color copyColor = new Color(terrainTypeGrid[x, y].r, terrainTypeGrid[x, y].g, terrainTypeGrid[x, y].b, terrainTypeGrid[x, y].a);
+        return copyColor;
     }
 
     /* BRAINSTORMING SECTION - Alex */
