@@ -1,190 +1,145 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.AI;
-using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 public class AgentGenerator : MonoBehaviour
 {
     public Element[] elements;
-    public int elementSize = 25;
-    public int elementSpacing = 3; // Every three units in world space, I am going to put the element down
-    public Terrain terrain; // terrain to modify
+    private float density;
+    //determining the maximum color value
+    private int elementIndex = 0;
+    private Color[,] terrainTypeGrid;
 
+    float waterThreshold = 0;
+
+    /*
+         These variables are related to "IntiateAgentGenerator" function
+    */
+    //This variables need to be change to have a different view
+    int x_tempValue = 1;  //Start point, which means the first value of terrainTypeGrid
+    int z_tempValue = 1;  //Start point, which means the first value of terrainTypeGrid
+    float terrainSize = 2048; //The size of terrain
+
+    int inc = 0;//:)
+
+    /*
+       these can be changed based on what to you want to see, for example, how many place left then put the tree 
+    */
+    float x_elemntSpacing = 50;
+    float z_elemntSpacing = 40;
+
+    const float maxSpacingTrees = 40;
+    const float minSpacingTrees = 12;
+
+    const float maxSpacingGrass = 15;
+    const float minSpacingGrass = 8;
+
+    const float maxSpacingRocks = 40;
+    const float minSpacingRocks = 20;
+
+    //REMOVE LATER
+    float[,] heightMapArray = new float[2049, 2049];
 
     void Start()
     {
-        /*Terrain terrainTemp = Terrain.activeTerrain;
-            var temp = terrainTemp.terrainData;
-                     Vector3 scale=temp.heightmapScale;
-                     int x=300;
-                     int z= 200;
-          float hTemp = (float)temp.GetHeight((int)(x/scale.x),(int)(z/scale.z));
 
-            Debug.Log("##Test Heightmap"+hTemp);
-            Vector3 worldPosition = new Vector3(x,hTemp,z);
+    }
 
-          GameObject temp1 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-         float height = (float)(worldPosition.y*0.015);
-         worldPosition.y = (worldPosition.y)+height;
-           Debug.Log("##Test Y value"+ worldPosition.y);
-             temp1.transform.position = worldPosition;
-             */
-        int pixelSize = 10;
-        //float terrainSize = terrain.terrainData.size.z;
-        float terrainSize = 1000;
-        int x_tempValue = 1;
-        int z_tempValue = 1;
-        Color[,] terrainTypeGrid = GetComponent<TerrainManager>().terrainTypeGrid;
 
-        //Debug.Log("##TEST terrain :" + terrainTypeGrid[1000,1000]);
+    public void IntiateAgentGenerator(Color[,] terrainTypeGridTemp, float wt, float[,] heightMapArrayT)
+    {
+        terrainTypeGrid = terrainTypeGridTemp;
 
-        //while(x_tempValue<terrainSize)
+        waterThreshold = wt;
+
+        //remove this line later
+        heightMapArray = heightMapArrayT;
+
+        for (int x = x_tempValue; x < terrainSize; x += (int)x_elemntSpacing)
         {
-            for (int x = x_tempValue; x < terrainSize; x += 30)
+            for (int z = z_tempValue; z < terrainSize; z += (int)z_elemntSpacing)
             {
-                for (int z = z_tempValue; z < terrainSize; z += 20)
-                {
-                    AgentGenAlgorithm(x, z);
-                }
+                AgentGenAlgorithm(x, z);
 
             }
+
         }
-
-        //ColorChange();
-        //AgentGenAlgorithm(Random.Range(1,900),Random.Range(1,900));
-
-    }
-    void Update()
-    {
-
-    }
-
-    void ColorChange()
-    {
-
-        Color[,] terrainTypeGrid = GetComponent<TerrainManager>().terrainTypeGrid;
-
-        Texture2D texture = new Texture2D(128, 128);
-
-        GetComponent<Renderer>().material.mainTexture = texture;
-
-        Color color = Color.gray;
-
-        texture.SetPixel(128, 128, color);
-
-        texture.Apply();
-
 
     }
 
     void AgentGenAlgorithm(int xTile, int zTile)
     {
-        Color[,] terrainTypeGrid = GetComponent<TerrainManager>().terrainTypeGrid;
-        int elementIndex = GettingColor(terrainTypeGrid[xTile, zTile]);
-        Element element = elements[elementIndex];
 
-        //   for (int i = 0; i < elements.Length; i++)
-        // {
-        if (element.CanPlace())
+        int elementIndex = ElementRecognization(terrainTypeGrid[xTile, zTile]);
+
+        if (elementIndex < 3)
         {
-            Vector3 position = new Vector3(xTile, heightValue(xTile, zTile), zTile);
-            Vector3 offset = new Vector3(Random.Range(-0.75f, 1.75f), 0f, Random.Range(-0.75f, 1.75f));
+            Element element = elements[elementIndex];
+
+            //z_elemntSpacing = ((100.0f - density) * 10) + 10;
+
+            //z_elemntSpacing = CanPlace() * 100.0f;
+            //if (CanPlace() > 0)
+            //{
+
+            float heightOffSet = 0;
+
+            if (elementIndex == 2)
+            {
+                heightOffSet = -1.5f;
+            }
+
+            Vector3 offset = new Vector3(Random.Range(-5.0f, 5.0f), heightOffSet, Random.Range(-5.0f, 5.0f));
+   
+            Vector3 position = new Vector3(xTile / 2.049f + offset[0], heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), zTile / 2.049f + offset[2]);
+
+
             Vector3 rotation = new Vector3(Random.Range(0f, 5f), Random.Range(0, 360f), Random.Range(0f, 5f));
 
-            //The first value of scale and yPosition should have the same amount
-            Vector3 scale = Vector3.one * Random.Range(2.3f, 5.3f);
+            //The first value of scale and heightValue should have the same amount
+            Vector3 scale = Vector3.one * Random.Range(0.8f, 1.8f);
 
             GameObject newElement = Instantiate(element.GetRandom());
             newElement.transform.SetParent(transform);
-            newElement.transform.position = position + offset;
+            newElement.transform.position = position;
             newElement.transform.eulerAngles = rotation;
             newElement.transform.localScale = scale;
-            // break;
+            //}
         }
-        //  }
     }
 
 
 
-
-    private float heightValue(int x, int z)
+    // Determine the correct HightValue
+    //Values of xWeighted and zWeighted or between 0 and 1
+    private float heightValue(float xWeighted, float zWeighted)
     {
         Terrain terrainTemp = Terrain.activeTerrain;
         var temp = terrainTemp.terrainData;
         Vector3 scale = temp.heightmapScale;
-        float hTemp = (float)temp.GetHeight((int)(x / scale.x), (int)(z / scale.z));
-        Vector3 worldPosition = new Vector3(x, hTemp, z);
-        float height = (float)(worldPosition.y * 0.015);
+
+        float hTemp = (float)temp.GetHeight((int)Mathf.Round(xWeighted / scale.x), (int)Mathf.Round(zWeighted / scale.z));
+
+
+        //if (inc < 20)
+        //{
+        //    print(temp.GetHeight((int)(xWeighted / scale.x), (int)(zWeighted / scale.z)));
+        //    print(heightMapArray[(int)(xWeighted * 2.049f), (int)(zWeighted * 2.049f)]);
+        //}
+
+        //inc++;
+
+        Vector3 worldPosition = new Vector3(xWeighted, hTemp, zWeighted);
+        //float height = (float)(worldPosition.y * 0.015);
         //worldPosition.y = (worldPosition.y)+height;
         return worldPosition.y;
     }
 
 
-    [Obsolete]
-    void AgentCreator(int tileVariable, int elementIndex)
+    public int ElementRecognization(Color32 rgba)
     {
-        elementSize += tileVariable;
-        //  Debug.Log("TEST Prefabs Name : " + tileVariable.ToString());
-        Vector3 scale = terrain.terrainData.heightmapScale;
-        Vector3 locationTerrain = new Vector3(0, terrain.terrainData.GetHeight((int)(tileVariable / scale.y), (int)(tileVariable / scale.z)));
-
-        //Debug.Log("TEST terrain :" + locationTerrain.y+"  "+ locationTerrain.z);
-
-        Debug.Log("TEST terrain :" + locationTerrain.ToString());
-
-        for (int x = tileVariable; x < elementSize; x += elementSpacing)
-        {
-            for (int z = 7; z < elementSize; z += elementSpacing)
-            {
-                Element element = elements[elementIndex];
-                double j = locationTerrain.y + (locationTerrain.y) * 0.16;
-                Vector3 position = new Vector3(x, (int)j, z);
-                GameObject newElement = Instantiate(element.GetRandom());
-                newElement.transform.position = position;
-
-
-
-                float yPosition = 24.0f;
-                /*    for (int i = 0; i < elements.Length; i++)
-                    {
-                       // Element element1 = elements[i];
-                        if (element.CanPlace())
-                        {
-
-                                Vector3 position1 = new Vector3(x,yPosition,z);
-                                Vector3 offset = new Vector3(UnityEngine.Random.Range(-0.75f, 0.75f), 0f, Random.Range(-0.75f, 0.75f));
-                                Vector3 rotation = new Vector3(UnityEngine.Random.Range(0f, 5f), UnityEngine.Random.Range(0, 360f), Random.Range(0f, 5f));
-
-                                //The first value of scale and yPosition should have the same amount
-                                Vector3 scale1 = Vector3.one * Random.Range(2.3f, 2.3f); 
-
-                                GameObject newElement1 = Instantiate(element.GetRandom());
-                                newElement.transform.SetParent(transform);
-                               newElement.transform.position = position + offset;
-                                newElement.transform.eulerAngles = rotation;
-                                newElement.transform.localScale = scale;
-                                break;
-                        }
-                    }*/
-
-            }
-
-        }
-    }
-
-
-    public int GettingColor(Color32 rgba)
-    {
-        //determining the maximum color value
-        int elementIndex = 0;
-        //Debug.Log("TEST Color MaxValue: " + maxValue.ToString());
-
-        // Debug.Log(Mathf.Max(rgba[0].r,rgba[0].g, rgba[0].b,rgba[0].a));
-
         // it determines the index value for determining the type of element
         List<int> colorListIndex = new List<int>();
         colorListIndex.Add(rgba.r);
@@ -192,21 +147,75 @@ public class AgentGenerator : MonoBehaviour
         colorListIndex.Add(rgba.b);
         colorListIndex.Add(rgba.a);
 
+        int maxIndexTest;
 
-        int maxIndexTest = colorListIndex.ToList().IndexOf(colorListIndex.Max());
-        //determine the index value
-        // Debug.Log("TEST Index : " + maxIndexTest.ToString());
+        //If not water
+        if (rgba.b <= waterThreshold)
+        {
+
+            //Check percentages to allow a gradient
+            float sum = rgba.r + rgba.g + rgba.a;
+
+            float pForest = rgba.r / sum;
+            //float pMountain = rgba.a / sum;
+            float pGrass = rgba.g / sum;
+
+            float picker = UnityEngine.Random.Range(0.0f, 1.0f);
+
+            //pick tree
+            if (picker < pForest)
+            {
+                maxIndexTest = 0;
+            }
+            else if (picker - pForest < pGrass)//pick plant
+            {
+                maxIndexTest = 1;
+            }
+            else//default to rock kinda
+            {
+                maxIndexTest = 2;
+            }
+        }
+        else
+        {
+            maxIndexTest = 4;
+        }
+        
+
+
+
+
+        //int maxIndexTest = colorListIndex.ToList().IndexOf(colorListIndex.Max());
+        /*determine the index value, which index represent one element, for example: 
+        if R has a heighest value, the element index will be zero, which it indicates the Tree
+        */
+
+
+
         if (maxIndexTest == 0)
         {
             elementIndex = 0; //If element is tree
+            density = funcDensity(colorListIndex[maxIndexTest]);
+            //print("Density" + density);
+
+            x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingTrees, minSpacingTrees);
+            z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingTrees, minSpacingTrees);
         }
         else if (maxIndexTest == 1)
         {
             elementIndex = 1; //If element is Grass
+            density = funcDensity(colorListIndex[maxIndexTest]);
+
+            x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
+            z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
         }
-        else if (maxIndexTest == 3)
+        else if (maxIndexTest == 2)
         {
             elementIndex = 2; //If element is Rock
+            density = funcDensity(colorListIndex[maxIndexTest]);
+
+            x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
+            z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
         }
         else
         {
@@ -214,33 +223,133 @@ public class AgentGenerator : MonoBehaviour
         }
 
 
+        
+        //if (((100.0f - density) + 10) >= 40)
+        //{
+        //    x_elemntSpacing = 40;
+        //}
+        //else
+        //{
+        //    x_elemntSpacing = ((100.0f - density)) + 10;
+        //}
+
+        //if (((100.0f - density) + 10) >= 90)
+        //{
+        //    z_elemntSpacing = 70;
+        //}
+        //else
+        //{
+        //    z_elemntSpacing = ((100.0f - density)) + 10;
+        //}
+
+
         return elementIndex;
     }
 
-    public Tuple<int, int> GetMultipleValue()
+    // This function calculate the percentage of density
+    public float funcDensity(float desnityValue)
     {
-        return Tuple.Create(1, 2);
+        return ((desnityValue / 255));
     }
 
 
-    public int funcDensity(int desnityValue)
-    {
-        // The range RGBA between (0-180,200-255,0-180) to define amount of density
+    //public float CanPlace()
+    //{
 
-        //Density low
-        if (desnityValue > 200)
-        {
-            return 500;
-        }
-        //Density high
-        if (desnityValue < 200)
-        {
-            return 1;
-        }
-        return 0;
-    }
+    //    //Adequate density for the first element => Tree
+    //    if (elementIndex == 0)
+    //    {
+    //        //  if (UnityEngine.Random.Range(0,100)<density)
+    //        if (density > 95)
+    //        {
+    //            return UnityEngine.Random.Range(0.95f, 1.0f);
+    //        }
+    //        else if (density > 90)
+    //        {
+    //            return UnityEngine.Random.Range(0.90f, 1.0f);
+    //        }
+    //        else if (density > 80)
+    //        {
+    //            return UnityEngine.Random.Range(0.80f, 1.0f);
+    //        }
+    //        else if (density > 50)
+    //        {
 
+    //            return UnityEngine.Random.Range(0.5f, 1.0f);
+    //        }
+    //        else if (density > 30)
+    //        {
 
+    //            return UnityEngine.Random.Range(0.30f, 1.0f);
+    //        }
+    //        else if (density > 10)
+    //        {
+    //            return UnityEngine.Random.Range(0.1f, 1.0f);
+    //        }
+    //    }
+    //    //Adequate density for the second element => Grass
+    //    if (elementIndex == 1)
+    //    {
+    //        if (density > 95)
+    //        {
+    //            return UnityEngine.Random.Range(0.95f, 1.0f);
+    //        }
+    //        else if (density > 90)
+    //        {
+    //            return UnityEngine.Random.Range(0.90f, 1.0f);
+    //        }
+    //        else if (density > 80)
+    //        {
+    //            return UnityEngine.Random.Range(0.80f, 1.0f);
+    //        }
+    //        else if (density > 50)
+    //        {
+
+    //            return UnityEngine.Random.Range(0.5f, 1.0f);
+    //        }
+    //        else if (density > 30)
+    //        {
+
+    //            return UnityEngine.Random.Range(0.30f, 1.0f);
+    //        }
+    //        else if (density > 10)
+    //        {
+    //            return UnityEngine.Random.Range(0.1f, 1.0f);
+    //        }
+    //    }
+
+    //    //Adequate density for the second element => Rock
+    //    if (elementIndex == 2)
+    //    {
+    //        if (density > 95)
+    //        {
+    //            return UnityEngine.Random.Range(0.95f, 1.0f);
+    //        }
+    //        else if (density > 90)
+    //        {
+    //            return UnityEngine.Random.Range(0.90f, 1.0f);
+    //        }
+    //        else if (density > 80)
+    //        {
+    //            return UnityEngine.Random.Range(0.80f, 1.0f);
+    //        }
+    //        else if (density > 50)
+    //        {
+
+    //            return UnityEngine.Random.Range(0.5f, 1.0f);
+    //        }
+    //        else if (density > 30)
+    //        {
+
+    //            return UnityEngine.Random.Range(0.30f, 1.0f);
+    //        }
+    //        else if (density > 10)
+    //        {
+    //            return UnityEngine.Random.Range(0.1f, 1.0f);
+    //        }
+    //    }
+    //    return 0.0f;
+    //}
 
 
 }
@@ -257,16 +366,10 @@ public class Element
 
     public GameObject[] prefabs;
 
-    public bool CanPlace()
-    {
-
-        //Debug.Log("Elements-Name:  " + name.ToString());
-        if (UnityEngine.Random.Range(1, 10) < density)
-            return true;
-        else
-            return false;
-    }
-
+    /*
+    Different vegetation is done, now terrain will have different vegetation,
+     which the algorithm is selected randomly.
+    */
     public GameObject GetRandom()
     {
         return prefabs[UnityEngine.Random.Range(0, prefabs.Length)];

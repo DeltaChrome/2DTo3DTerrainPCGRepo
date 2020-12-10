@@ -264,6 +264,62 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 87383089}
   m_CullTransparentMesh: 0
+--- !u!1 &156342129
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 156342131}
+  - component: {fileID: 156342130}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &156342130
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156342129}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21784246e473cdf44b37984285db386e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  elements:
+  - name: Tree
+    density: 6
+    prefabs:
+    - {fileID: 4470068468865549885, guid: 06573cc19fb2e4a479092a9b4687b26c, type: 3}
+  - name: Plant
+    density: 6
+    prefabs:
+    - {fileID: 51956900919061627, guid: 64ca9e302d16490429d2a0f349d72095, type: 3}
+  - name: Rock
+    density: 6
+    prefabs:
+    - {fileID: 6573723043079136192, guid: ed18eacbf5bb4514d8a6b7a36c669520, type: 3}
+--- !u!4 &156342131
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156342129}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 256.0118, y: 206.8029, z: 154.67873}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 8
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &345391095
 GameObject:
   m_ObjectHideFlags: 0
@@ -816,7 +872,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1465285532}
   - component: {fileID: 1465285531}
-  - component: {fileID: 1465285533}
   m_Layer: 0
   m_Name: TerrainManager_Obj
   m_TagString: Untagged
@@ -840,7 +895,7 @@ MonoBehaviour:
   terrainObject: {fileID: 1397282278}
   waterManagerGO: {fileID: 0}
   waterManager: {fileID: 0}
-  agentManager: {fileID: 0}
+  agentManager: {fileID: 156342130}
 --- !u!4 &1465285532
 Transform:
   m_ObjectHideFlags: 0
@@ -855,34 +910,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1465285533
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1465285530}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 21784246e473cdf44b37984285db386e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  elements:
-  - name: Trees
-    density: 6
-    prefabs:
-    - {fileID: 4470068468865549885, guid: 06573cc19fb2e4a479092a9b4687b26c, type: 3}
-  - name: Trees
-    density: 6
-    prefabs:
-    - {fileID: 4867889463058203156, guid: f550c80a288252347bddcb7465dc52df, type: 3}
-  - name: Trees
-    density: 6
-    prefabs:
-    - {fileID: 6573723043079136192, guid: ed18eacbf5bb4514d8a6b7a36c669520, type: 3}
-  elementSize: 25
-  elementSpacing: 3
-  terrain: {fileID: 1397282280}
 --- !u!1 &1465862620
 GameObject:
   m_ObjectHideFlags: 0

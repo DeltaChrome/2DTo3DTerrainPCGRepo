@@ -70,6 +70,12 @@ public class WaterManager : MonoBehaviour
      * detected shoreline and bodies of water
      * @Returns: updated perlinHeightData
      */
+
+    public float getWaterThreshold()
+    {
+        return MIN_SHORE_THRESHOLD;
+    }
+
     public float[,] getHeights(float[,] perlinHeightData)
     {
         // get the lowest number in the 2D array
