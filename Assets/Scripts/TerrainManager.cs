@@ -1328,9 +1328,9 @@ public class TerrainManager : MonoBehaviour
         }
 
         terrainTexture.Apply();
-        Material terMat = new Material(Shader.Find("Legacy Shaders/Bumped Specular"));
-        terMat.mainTexture = terTex;
-        terrainComponent.materialTemplate = terMat;
+        Material terrainMaterial = new Material(Shader.Find("Legacy Shaders/Bumped Specular"));
+        terrainMaterial.mainTexture = terrainTexture;
+        terrainComponent.materialTemplate = terrainMaterial;
     }
 
     /* ------------------------------------------------------------------ */
