@@ -1271,28 +1271,25 @@ public class TerrainManager : MonoBehaviour
 
     /* ------------------------------------------------------------------ */
     /* 3D TERRAIN TEXTURE MODIFICATION */
+    /* This code took inspiration from the link below. */
+    /* https://alastaira.wordpress.com/2013/11/14/procedural-terrain-splatmapping/ */
     /* ------------------------------------------------------------------ */
 
-    //https://alastaira.wordpress.com/2013/11/14/procedural-terrain-splatmapping/
+
     void ModifyTerrainTexture()
     {
-
-
-    Texture2D terTex = new Texture2D(2048, 2048);
+    Texture2D terrainTexture = new Texture2D(2048, 2048);
     Texture2D terTexOrig = (Texture2D)terrainComponent.materialTemplate.mainTexture;
-    //terTexOrig.Resize(2048, 2048);
-    //Graphics.CopyTexture(terTexOrig, terTex);
 
+    // Resizing the texture
     for (int i = 0; i < 2048; i++)
     {
         for (int j = 0; j < 2048; j++)
         {
-            terTex.SetPixel(i, j, terTexOrig.GetPixel(i/2, j/2));
+            terrainTexture.SetPixel(i, j, terTexOrig.GetPixel(i/2, j/2));
         }
     }
 
-    Material terrainMaterial = new Material(Shader.Find("Standard"));
-    Color[] terrainTextureArray = new Color[(int)SIZE_FULL*(int)SIZE_FULL];
     float xCoord = Random.Range(0.0f, 99999.0f);
     float yCoord = Random.Range(0.0f, 99999.0f);
     float heightOfSandMod = (Mathf.PerlinNoise(xCoord, yCoord));
@@ -1313,64 +1310,29 @@ public class TerrainManager : MonoBehaviour
                 int sandBAddOrSub = sandColModB <= 0.5 ? -1 : 1;
                 int sandAAddOrSub = sandColModA <= 0.5 ? -1 : 1;
                 bool sandIsBlackSpeck = Random.Range(0, 63) == 0 ? true : false;
-                // Sample the height at this location (note GetHeight expects int coordinates corresponding to locations in the heightmap array)
+
                 float height = Terrain.activeTerrain.terrainData.GetHeight(x,y);
+                
+                // Terrain Recolouring
                 if (height > 80.0f+heightOfSnow){
-                    //terrainTextureArray[x + (int)SIZE_FULL * y] = Color.white;
-                    terTex.SetPixel(x, y, Color.white);
+                    terrainTexture.SetPixel(x, y, Color.white);
                 } 
                 else if(terrainTypeGrid[x,y].b >= Mathf.Min(waterManager.GetMinShoreThreshold() + heightOfSandMod, waterManager.GetMaxShoreThreshold())){
                     if(sandIsBlackSpeck){
-                        //terrainTextureArray[x + (int)SIZE_FULL * y] = Color.black;
-                        terTex.SetPixel(x, y, Color.black);
+                        terrainTexture.SetPixel(x, y, Color.black);
                     } else {
-                        //terrainTextureArray[x + (int)SIZE_FULL * y] = new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor);
-                        terTex.SetPixel(x, y, new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor));
+                        terrainTexture.SetPixel(x, y, new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor));
                     }
                 }
             }
         }
-        Texture2D terrainTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
-        terrainTexture.SetPixels(terrainTextureArray);
-        terrainTexture.Apply();
-        terrainMaterial.mainTexture = terrainTexture;
-        terTex.Apply();
 
+        terrainTexture.Apply();
         Material terMat = new Material(Shader.Find("Legacy Shaders/Bumped Specular"));
         terMat.mainTexture = terTex;
         terrainComponent.materialTemplate = terMat;
     }
-/*
-    Texture2D GenerateTexture()
-    {
-        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
 
-        float noiseValue = 0.0f;
-
-        //Create the texture
-        for (int y = 0; y < SIZE_FULL; y++)
-        {
-            for (int x = 0; x < SIZE_FULL; x++)
-            {
-                // noiseValue = perlinNoiseArray[x, y] / 2.0f;
-                noiseValue = perlinNoiseArrayFinalized[x, y];
-
-                Color color = new Color(noiseValue, noiseValue, noiseValue);
-
-                texture.SetPixel(x, y, color);
-
-                //Create Terrain Height Map Cell 1
-                //perlinNoiseArrayCell[x, y] = noiseValue;
-
-            }
-        }
-
-        //Apply texture
-        texture.Apply();
-
-        return texture;
-    }
-*/
     /* ------------------------------------------------------------------ */
     /* GETTERS & SETTERS */
     /* ------------------------------------------------------------------ */
