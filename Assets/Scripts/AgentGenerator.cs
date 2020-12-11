@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿
+using System.ComponentModel;
 using System.Xml;
 using System;
 using System.Collections.Generic;
@@ -108,10 +109,21 @@ public class AgentGenerator : MonoBehaviour
             }
 
             inc++;
-            float slope = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
-            Vector3 slopeNormal = Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
+            Vector3 rotation;
+            if (elementIndex > 0)
+            {
+                float slope = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
+            
+                Vector3 slopeNormal = Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
 
-            Vector3 rotation = new Vector3(slopeNormal.x * slope, Random.Range(0, 360f), slopeNormal.z * slope);
+                rotation = new Vector3(Quaternion.FromToRotation(Vector3.up,slopeNormal).x * slope, Quaternion.FromToRotation(Vector3.up,slopeNormal).y * slope, Quaternion.FromToRotation(Vector3.up,slopeNormal).z * slope);
+            } else {
+                float slopeModToPos = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z) / 100;
+                position.y -= slopeModToPos;
+
+                rotation = new Vector3(0, Random.Range(0, 360f), 0);
+            }
+
 
             //The first value of scale and heightValue should have the same amount
             Vector3 scale = Vector3.one * Random.Range(0.8f, 1.8f);

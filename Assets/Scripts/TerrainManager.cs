@@ -53,7 +53,7 @@ public class TerrainManager : MonoBehaviour
     private const bool doPseudoGaussBlur = true;
 
     // Pseudo Gaussian blur variables, runs in linear time, O(n) where n = number of pixels. Sigma determines the degree of blurring applied to terrainTypeGrid. There is a very small percentage margin or error on pixels.
-    private const float pseudoGaussSigma = 50.0f;
+    private const float pseudoGaussSigma = 30.0f;
 
     // Flag variables for whether true Gaussian, in index 0, and/or true Box, in index 1, should execute. By default, these are assigned values of false due to the computational load that true Gaussian/Box blurring requires.
     private static bool[] doGaussAndOrThenBoxBlur = new bool[] { false, false };
