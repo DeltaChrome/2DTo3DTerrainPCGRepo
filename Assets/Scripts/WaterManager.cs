@@ -11,8 +11,8 @@ using UnityEngine;
 public class WaterManager : MonoBehaviour
 {
     private int SIZE_FULL;
-    private float MIN_SHORE_THRESHOLD = 0.33f;
-    private float MAX_SHORE_THRESHOLD = 0.95f;
+    private float MIN_SHORE_THRESHOLD = 0.1f;
+    private float MAX_SHORE_THRESHOLD = 0.90f;
     private float WATER_HEIGHT;
     
     public List<WaterDataObject> shoreLines = new List<WaterDataObject>();  // this could be for Nader eventually
@@ -71,9 +71,15 @@ public class WaterManager : MonoBehaviour
      * @Returns: updated perlinHeightData
      */
 
-    public float getWaterThreshold()
+    public float GetMaxShoreThreshold()
     {
         return MAX_SHORE_THRESHOLD;
+    }
+
+
+    public float GetMinShoreThreshold()
+    {
+        return MIN_SHORE_THRESHOLD;
     }
 
     public float[,] getHeights(float[,] perlinHeightData)
@@ -130,7 +136,9 @@ public class WaterManager : MonoBehaviour
         waterPlane.transform.position = new Vector3(bodyWaterX, lowestWaterHeight + 0.1f, bodyWaterY);
         // apply blue material to simulate water
         Renderer waterMaterial = waterPlane.GetComponent<Renderer>(); // grab the renderer component on the plane
-        waterMaterial.material.SetColor("_Color", new Color(0.0f,0.0f,1.0f,0.8f));
+        Material waterShader = new Material(Shader.Find("Legacy Shaders/Transparent/Specular"));
+        waterMaterial.material = waterShader;
+        waterMaterial.material.SetColor("_Color", new Color(5.0f/255.0f,182.0f/255.0f,234.0f/255.0f,0.95f));
     }
 
     /*

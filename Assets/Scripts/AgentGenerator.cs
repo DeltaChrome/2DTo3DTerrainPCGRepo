@@ -56,8 +56,6 @@ public class AgentGenerator : MonoBehaviour
         terrainTypeGrid = terrainTypeGridTemp;
 
         waterThreshold = wt - 0.1f;
-        print("test");
-        print(waterThreshold);
 
         //remove this line later
         heightMapArray = heightMapArrayT;
@@ -165,10 +163,6 @@ public class AgentGenerator : MonoBehaviour
         int maxIndexTest;
 
 
-        if(inc < 20){
-            print(waterThreshold);
-        }
-        inc++;
         //If not water
         if (rgba.b <= waterThreshold)
         {

@@ -1,4 +1,7 @@
-﻿using System;
+﻿
+using System.ComponentModel;
+using System.Reflection;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -107,6 +110,7 @@ public class TerrainManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        float timeStart = Time.realtimeSinceStartup;
 
         terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
 
@@ -121,16 +125,22 @@ public class TerrainManager : MonoBehaviour
         ClearNoise(perlinNoiseArrayFinalized);
         ClearNoise(perlinNoiseArrayCell);
 
+        float timeStartTTG = Time.realtimeSinceStartup;
         //Create Terrain Type Grid
         InitTerrainTypeGrid();
+        print("Seconds to create blurred terrain type grid: " + (Time.realtimeSinceStartup - timeStartTTG));
 
+        float timeStartHeight = Time.realtimeSinceStartup;
         //Create Noise functions and merge them
         CreateHeightArray(); //Result is a filled perlinNoiseArrayFinalized array
+        print("Seconds to set heights: " + (Time.realtimeSinceStartup - timeStartHeight));
 
+        float timeStartShores = Time.realtimeSinceStartup;
         //Modify perlinNoiseArrayFinalized array for water manipulation
         //Call Water Manager
         waterManager.initialize((int)SIZE_FULL, terrainTypeGrid);
         perlinNoiseArrayFinalized = waterManager.getHeights(perlinNoiseArrayFinalized);
+        print("Seconds to create shorelines: " + (Time.realtimeSinceStartup - timeStartShores));
 
         //Create Textures for Grids
         GenerateMapsGUI();
@@ -140,9 +150,17 @@ public class TerrainManager : MonoBehaviour
 
         // WaterManager AGAIN
         waterManager.createWaterPlane(terrainComponent);
-
+        
+        float timeStartPlace = Time.realtimeSinceStartup;
         //Call Agent Manager
-        agentManager.IntiateAgentGenerator(terrainTypeGrid, waterManager.getWaterThreshold(), perlinNoiseArrayFinalizedFlipped);
+        agentManager.IntiateAgentGenerator(terrainTypeGrid, waterManager.GetMaxShoreThreshold(), perlinNoiseArrayFinalizedFlipped);
+        print("Seconds to place objects: " + (Time.realtimeSinceStartup - timeStartPlace));
+
+        float timeStartModTer = Time.realtimeSinceStartup;
+        ModifyTerrainTexture();
+        print("Seconds to texture terrain: " + (Time.realtimeSinceStartup - timeStartModTer));
+
+        print("Seconds to generate everything: " + (Time.realtimeSinceStartup - timeStart));
     }
 
     // Resets noise array to hold zeros.
@@ -407,25 +425,6 @@ public class TerrainManager : MonoBehaviour
 
         //print ("size of points: " + xPointsMountainPeak.Count);
 
-        //increment group number once a point cannot be connected to another point
-        int groupNum = 0;
-
-        for (int y = 0; y < xPointsMountainPeak.Count; y++)
-        {
-            for (int x = 0; x < xPointsMountainPeak.Count; x++)
-            {
-
-                //for (int z = 0; z < xPointsMountainPeak.Count; z++)
-                //{
-                //    //If the point is within distance to another point
-                //    if()
-                //    {
-
-                //    }
-                //}
-
-            }
-        }
 
         float tempx;
         float tempy;
@@ -444,14 +443,14 @@ public class TerrainManager : MonoBehaviour
 
                 if (Mathf.Abs(tempx + tempy) < previousSmallestDist && j != i)
                 {
-                    print("Smallest Distance: " + Mathf.Abs(tempx + tempy));
+                    //print("Smallest Distance: " + Mathf.Abs(tempx + tempy));
 
                     previousSmallestDist = Mathf.Abs(tempx + tempy);
                     smallestPoint = j;
                 }
                 else if (Mathf.Abs(tempx + tempy) < previousSmallestDist2 && j != i)
                 {
-                    print("2nd Smallest Distance: " + Mathf.Abs(tempx + tempy));
+                    //print("2nd Smallest Distance: " + Mathf.Abs(tempx + tempy));
 
                     previousSmallestDist2 = Mathf.Abs(tempx + tempy);
                     smallestPoint2 = j;
@@ -1271,6 +1270,108 @@ public class TerrainManager : MonoBehaviour
     }
 
     /* ------------------------------------------------------------------ */
+    /* 3D TERRAIN TEXTURE MODIFICATION */
+    /* ------------------------------------------------------------------ */
+
+    //https://alastaira.wordpress.com/2013/11/14/procedural-terrain-splatmapping/
+    void ModifyTerrainTexture()
+    {
+
+
+    Texture2D terTex = new Texture2D(2048, 2048);
+    Texture2D terTexOrig = (Texture2D)terrainComponent.materialTemplate.mainTexture;
+    //terTexOrig.Resize(2048, 2048);
+    //Graphics.CopyTexture(terTexOrig, terTex);
+
+    for (int i = 0; i < 2048; i++)
+    {
+        for (int j = 0; j < 2048; j++)
+        {
+            terTex.SetPixel(i, j, terTexOrig.GetPixel(i/2, j/2));
+        }
+    }
+
+    Material terrainMaterial = new Material(Shader.Find("Standard"));
+    Color[] terrainTextureArray = new Color[(int)SIZE_FULL*(int)SIZE_FULL];
+    float xCoord = Random.Range(0.0f, 99999.0f);
+    float yCoord = Random.Range(0.0f, 99999.0f);
+    float heightOfSandMod = (Mathf.PerlinNoise(xCoord, yCoord));
+    float heightOfSnow = (Mathf.PerlinNoise(xCoord, yCoord))*20;      
+
+
+        for (int y = 0; y < (int)SIZE_FULL; y++)
+        {
+            for (int x = 0; x < (int)SIZE_FULL; x++)
+            {
+                float divisor = Mathf.PerlinNoise(xCoord+x, yCoord+y)*30;
+                float sandColModR = (Mathf.PerlinNoise(xCoord+x, yCoord+y));
+                float sandColModG = (Mathf.PerlinNoise(xCoord-x, yCoord+y));
+                float sandColModB = (Mathf.PerlinNoise(xCoord+x, yCoord-y));
+                float sandColModA = (Mathf.PerlinNoise(xCoord-x, yCoord-y));
+                int sandRAddOrSub = sandColModR <= 0.5 ? -1 : 1;
+                int sandGAddOrSub = sandColModG <= 0.5 ? -1 : 1;
+                int sandBAddOrSub = sandColModB <= 0.5 ? -1 : 1;
+                int sandAAddOrSub = sandColModA <= 0.5 ? -1 : 1;
+                bool sandIsBlackSpeck = Random.Range(0, 63) == 0 ? true : false;
+                // Sample the height at this location (note GetHeight expects int coordinates corresponding to locations in the heightmap array)
+                float height = Terrain.activeTerrain.terrainData.GetHeight(x,y);
+                if (height > 80.0f+heightOfSnow){
+                    //terrainTextureArray[x + (int)SIZE_FULL * y] = Color.white;
+                    terTex.SetPixel(x, y, Color.white);
+                } 
+                else if(terrainTypeGrid[x,y].b >= Mathf.Min(waterManager.GetMinShoreThreshold() + heightOfSandMod, waterManager.GetMaxShoreThreshold())){
+                    if(sandIsBlackSpeck){
+                        //terrainTextureArray[x + (int)SIZE_FULL * y] = Color.black;
+                        terTex.SetPixel(x, y, Color.black);
+                    } else {
+                        //terrainTextureArray[x + (int)SIZE_FULL * y] = new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor);
+                        terTex.SetPixel(x, y, new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor));
+                    }
+                }
+            }
+        }
+        Texture2D terrainTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+        terrainTexture.SetPixels(terrainTextureArray);
+        terrainTexture.Apply();
+        terrainMaterial.mainTexture = terrainTexture;
+        terTex.Apply();
+
+        Material terMat = new Material(Shader.Find("Legacy Shaders/Bumped Specular"));
+        terMat.mainTexture = terTex;
+        terrainComponent.materialTemplate = terMat;
+    }
+/*
+    Texture2D GenerateTexture()
+    {
+        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+
+        float noiseValue = 0.0f;
+
+        //Create the texture
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+                // noiseValue = perlinNoiseArray[x, y] / 2.0f;
+                noiseValue = perlinNoiseArrayFinalized[x, y];
+
+                Color color = new Color(noiseValue, noiseValue, noiseValue);
+
+                texture.SetPixel(x, y, color);
+
+                //Create Terrain Height Map Cell 1
+                //perlinNoiseArrayCell[x, y] = noiseValue;
+
+            }
+        }
+
+        //Apply texture
+        texture.Apply();
+
+        return texture;
+    }
+*/
+    /* ------------------------------------------------------------------ */
     /* GETTERS & SETTERS */
     /* ------------------------------------------------------------------ */
 
@@ -1318,6 +1419,8 @@ public class TerrainManager : MonoBehaviour
             http://blog.ivank.net/fastest-gaussian-blur.html
 
             https://github.com/mdymel/superfastblur/blob/master/SuperfastBlur/GaussianBlur.cs
+
+            https://alastaira.wordpress.com/2013/11/14/procedural-terrain-splatmapping/
 
             **/
 }
