@@ -11,7 +11,7 @@ using UnityEngine;
 public class WaterManager : MonoBehaviour
 {
     private int SIZE_FULL;
-    private float MIN_SHORE_THRESHOLD = 0.53f;
+    private float MIN_SHORE_THRESHOLD = 0.33f;
     private float MAX_SHORE_THRESHOLD = 0.95f;
     private float WATER_HEIGHT;
     
@@ -73,7 +73,7 @@ public class WaterManager : MonoBehaviour
 
     public float getWaterThreshold()
     {
-        return MIN_SHORE_THRESHOLD;
+        return MAX_SHORE_THRESHOLD;
     }
 
     public float[,] getHeights(float[,] perlinHeightData)
@@ -127,7 +127,7 @@ public class WaterManager : MonoBehaviour
         GameObject waterPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
 
         waterPlane.transform.localScale = new Vector3(100.0f, 1.0f, 100.0f);
-        waterPlane.transform.position = new Vector3(bodyWaterX, lowestWaterHeight + 0.05f, bodyWaterY);
+        waterPlane.transform.position = new Vector3(bodyWaterX, lowestWaterHeight + 0.1f, bodyWaterY);
         // apply blue material to simulate water
         Renderer waterMaterial = waterPlane.GetComponent<Renderer>(); // grab the renderer component on the plane
         waterMaterial.material.SetColor("_Color", new Color(0.0f,0.0f,1.0f,0.8f));

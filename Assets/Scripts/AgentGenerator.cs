@@ -55,7 +55,9 @@ public class AgentGenerator : MonoBehaviour
     {
         terrainTypeGrid = terrainTypeGridTemp;
 
-        waterThreshold = wt;
+        waterThreshold = wt - 0.1f;
+        print("test");
+        print(waterThreshold);
 
         //remove this line later
         heightMapArray = heightMapArrayT;
@@ -143,14 +145,6 @@ public class AgentGenerator : MonoBehaviour
         float hTemp = (float)temp.GetHeight((int)Mathf.Round(xWeighted / scale.x), (int)Mathf.Round(zWeighted / scale.z));
 
 
-        //if (inc < 20)
-        //{
-        //    print(temp.GetHeight((int)(xWeighted / scale.x), (int)(zWeighted / scale.z)));
-        //    print(heightMapArray[(int)(xWeighted * 2.049f), (int)(zWeighted * 2.049f)]);
-        //}
-
-        //inc++;
-
         Vector3 worldPosition = new Vector3(xWeighted, hTemp, zWeighted);
         //float height = (float)(worldPosition.y * 0.015);
         //worldPosition.y = (worldPosition.y)+height;
@@ -158,17 +152,23 @@ public class AgentGenerator : MonoBehaviour
     }
 
 
-    public int ElementRecognization(Color32 rgba)
+    public int ElementRecognization(Color rgba)
     {
+        
         // it determines the index value for determining the type of element
-        List<int> colorListIndex = new List<int>();
+        List<float> colorListIndex = new List<float>();
         colorListIndex.Add(rgba.r);
         colorListIndex.Add(rgba.g);
         colorListIndex.Add(rgba.b);
         colorListIndex.Add(rgba.a);
-
+        
         int maxIndexTest;
 
+
+        if(inc < 20){
+            print(waterThreshold);
+        }
+        inc++;
         //If not water
         if (rgba.b <= waterThreshold)
         {
@@ -215,7 +215,7 @@ public class AgentGenerator : MonoBehaviour
         if (maxIndexTest == 0)
         {
             elementIndex = 0; //If element is tree
-            density = funcDensity(colorListIndex[maxIndexTest]);
+            density = colorListIndex[maxIndexTest];
             //print("Density" + density);
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingTrees, minSpacingTrees);
@@ -224,7 +224,7 @@ public class AgentGenerator : MonoBehaviour
         else if (maxIndexTest == 1)
         {
             elementIndex = 1; //If element is Grass
-            density = funcDensity(colorListIndex[maxIndexTest]);
+            density = colorListIndex[maxIndexTest];
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
             z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
@@ -232,7 +232,7 @@ public class AgentGenerator : MonoBehaviour
         else if (maxIndexTest == 2)
         {
             elementIndex = 2; //If element is Rock
-            density = funcDensity(colorListIndex[maxIndexTest]);
+            density = colorListIndex[maxIndexTest];
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
             z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
