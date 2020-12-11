@@ -101,14 +101,7 @@ public class AgentGenerator : MonoBehaviour
             //Vector3 position = new Vector3(xTile / 2.049f + offset[0], heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), zTile / 2.049f + offset[2]);
             Vector3 position = new Vector3(Mathf.Clamp(xTile / 2.049f + offset[0], Terrain.activeTerrain.GetPosition().x, Terrain.activeTerrain.terrainData.size.x), heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), Mathf.Clamp(zTile / 2.049f + offset[2], Terrain.activeTerrain.GetPosition().z, Terrain.activeTerrain.terrainData.size.z));
 
-            if (inc < 20)
-            {
-                print(inc);
-                print(Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z));
-                print(Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z));
-            }
 
-            inc++;
             Vector3 rotation;
             if (elementIndex > 0)
             {
