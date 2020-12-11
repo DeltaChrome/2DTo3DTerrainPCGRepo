@@ -83,6 +83,20 @@ public class TerrainManager : MonoBehaviour
     private Image perlinNoiseMiniMap;
     private Material perlinNoiseMaterial;
 
+    /* ------------------------------------------------------------------ */
+    /* 3D LANDSCAPE APPEARANCE VARIABLES */
+    /* ------------------------------------------------------------------ */
+
+    private const float baseSnowHeight = 80.0f;
+    //  1 / (fractionOfBlackSand+1) will control the sand speckling.
+    private const int fractionOfBlackSand = 63;
+    // Higher will mean higher variation in the starting height of snow but will also increase the likely snow height overall.
+    private const int perlinSnowHeightMod = 20;
+    // Higher will mean higher variation in the colour variation of the shoreline sand.
+    private const int perlinSandVariationSpecklingMod = 30;
+
+    /* ------------------------------------------------------------------ */
+
     // Perlin Noise Arrays.
     float[, ] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
     float[, ] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
@@ -1275,13 +1289,13 @@ public class TerrainManager : MonoBehaviour
     /* https://alastaira.wordpress.com/2013/11/14/procedural-terrain-splatmapping/ */
     /* ------------------------------------------------------------------ */
 
-
+    // Modify the terrain texture to include sand and snow.
     void ModifyTerrainTexture()
     {
     Texture2D terrainTexture = new Texture2D(2048, 2048);
     Texture2D terTexOrig = (Texture2D)terrainComponent.materialTemplate.mainTexture;
 
-    // Resizing the texture
+    // Resizing the texture from 1024 -> 2048
     for (int i = 0; i < 2048; i++)
     {
         for (int j = 0; j < 2048; j++)
@@ -1293,14 +1307,15 @@ public class TerrainManager : MonoBehaviour
     float xCoord = Random.Range(0.0f, 99999.0f);
     float yCoord = Random.Range(0.0f, 99999.0f);
     float heightOfSandMod = (Mathf.PerlinNoise(xCoord, yCoord));
-    float heightOfSnow = (Mathf.PerlinNoise(xCoord, yCoord))*20;      
+    float perlinHeightOfSnow = (Mathf.PerlinNoise(xCoord, yCoord))*perlinSnowHeightMod;      
 
 
         for (int y = 0; y < (int)SIZE_FULL; y++)
         {
             for (int x = 0; x < (int)SIZE_FULL; x++)
             {
-                float divisor = Mathf.PerlinNoise(xCoord+x, yCoord+y)*30;
+                // Variables that affect the sand speckling.
+                float divisor = Mathf.PerlinNoise(xCoord+x, yCoord+y)*perlinSandVariationSpecklingMod;
                 float sandColModR = (Mathf.PerlinNoise(xCoord+x, yCoord+y));
                 float sandColModG = (Mathf.PerlinNoise(xCoord-x, yCoord+y));
                 float sandColModB = (Mathf.PerlinNoise(xCoord+x, yCoord-y));
@@ -1309,18 +1324,22 @@ public class TerrainManager : MonoBehaviour
                 int sandGAddOrSub = sandColModG <= 0.5 ? -1 : 1;
                 int sandBAddOrSub = sandColModB <= 0.5 ? -1 : 1;
                 int sandAAddOrSub = sandColModA <= 0.5 ? -1 : 1;
-                bool sandIsBlackSpeck = Random.Range(0, 63) == 0 ? true : false;
+                bool sandIsBlackSpeck = Random.Range(0, fractionOfBlackSand) == 0 ? true : false;
 
+                // Sample the height to check for snow.
                 float height = Terrain.activeTerrain.terrainData.GetHeight(x,y);
                 
-                // Terrain Recolouring
-                if (height > 80.0f+heightOfSnow){
+                // Snow terrain recolouring
+                if (height > baseSnowHeight+perlinHeightOfSnow){
                     terrainTexture.SetPixel(x, y, Color.white);
                 } 
+                // Shoreline sand terrain recolouring
                 else if(terrainTypeGrid[x,y].b >= Mathf.Min(waterManager.GetMinShoreThreshold() + heightOfSandMod, waterManager.GetMaxShoreThreshold())){
                     if(sandIsBlackSpeck){
+                        // Black speckling that often sand possesses.
                         terrainTexture.SetPixel(x, y, Color.black);
                     } else {
+                        // Sand colour being shifted is various ways
                         terrainTexture.SetPixel(x, y, new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor));
                     }
                 }
