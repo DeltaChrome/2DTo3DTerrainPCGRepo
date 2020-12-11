@@ -99,7 +99,7 @@ public class AgentGenerator : MonoBehaviour
             Vector3 offset = new Vector3(Random.Range(-10.0f, 10.0f), heightOffSet, Random.Range(-10.0f, 10.0f));
    
             //Vector3 position = new Vector3(xTile / 2.049f + offset[0], heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), zTile / 2.049f + offset[2]);
-            Vector3 position = new Vector3(Mathf.Clamp(xTile / 2.049f + offset[0], Terrain.activeTerrain.GetPosition().x, Terrain.activeTerrain.terrainData.size.x), heightValue(xTile / 2.049f + offset[1], zTile / 2.049f + offset[2]), Mathf.Clamp(zTile / 2.049f + offset[2], Terrain.activeTerrain.GetPosition().z, Terrain.activeTerrain.terrainData.size.z));
+            Vector3 position = new Vector3(Mathf.Clamp(xTile / 2.049f + offset[0], Terrain.activeTerrain.GetPosition().x, Terrain.activeTerrain.terrainData.size.x), heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), Mathf.Clamp(zTile / 2.049f + offset[2], Terrain.activeTerrain.GetPosition().z, Terrain.activeTerrain.terrainData.size.z));
 
 
             Vector3 rotation;
