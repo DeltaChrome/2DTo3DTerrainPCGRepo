@@ -1,4 +1,6 @@
-﻿using System;
+﻿using System.ComponentModel;
+using System.Xml;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -18,9 +20,9 @@ public class AgentGenerator : MonoBehaviour
          These variables are related to "IntiateAgentGenerator" function
     */
     //This variables need to be change to have a different view
-    int x_tempValue = 1;  //Start point, which means the first value of terrainTypeGrid
-    int z_tempValue = 1;  //Start point, which means the first value of terrainTypeGrid
-    float terrainSize = 2048; //The size of terrain
+    int x_tempValue = 0;  //Start point, which means the first value of terrainTypeGrid
+    int z_tempValue = 0;  //Start point, which means the first value of terrainTypeGrid
+    float terrainSize = 2049; //The size of terrain
 
     int inc = 0;//:)
 
@@ -89,14 +91,27 @@ public class AgentGenerator : MonoBehaviour
             if (elementIndex == 2)
             {
                 heightOffSet = -1.5f;
+
             }
+
 
             Vector3 offset = new Vector3(Random.Range(-5.0f, 5.0f), heightOffSet, Random.Range(-5.0f, 5.0f));
    
-            Vector3 position = new Vector3(xTile / 2.049f + offset[0], heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), zTile / 2.049f + offset[2]);
+            //Vector3 position = new Vector3(xTile / 2.049f + offset[0], heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), zTile / 2.049f + offset[2]);
+            Vector3 position = new Vector3(Mathf.Clamp(xTile / 2.049f + offset[0], Terrain.activeTerrain.GetPosition().x, Terrain.activeTerrain.terrainData.size.x), heightValue(xTile / 2.049f + offset[0], zTile / 2.049f + offset[2]), Mathf.Clamp(zTile / 2.049f + offset[2], Terrain.activeTerrain.GetPosition().z, Terrain.activeTerrain.terrainData.size.z));
 
+            if (inc < 20)
+            {
+                print(inc);
+                print(Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z));
+                print(Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z));
+            }
 
-            Vector3 rotation = new Vector3(Random.Range(0f, 5f), Random.Range(0, 360f), Random.Range(0f, 5f));
+            inc++;
+            float slope = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
+            Vector3 slopeNormal = Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
+
+            Vector3 rotation = new Vector3(slopeNormal.x * slope, Random.Range(0, 360f), slopeNormal.z * slope);
 
             //The first value of scale and heightValue should have the same amount
             Vector3 scale = Vector3.one * Random.Range(0.8f, 1.8f);

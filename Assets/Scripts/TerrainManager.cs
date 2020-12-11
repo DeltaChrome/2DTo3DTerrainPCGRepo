@@ -113,8 +113,8 @@ public class TerrainManager : MonoBehaviour
         //Call Water Manager
         waterManager = new GameObject().AddComponent(typeof(WaterManager))as WaterManager;
         waterManager.name = "WaterManager";
-        agentManager = new GameObject().AddComponent(typeof(AgentGenerator))as AgentGenerator;
-        agentManager.name = "AgentManager";
+        //agentManager = new GameObject().AddComponent(typeof(AgentGenerator))as AgentGenerator;
+        //agentManager.name = "AgentManager";
 
         ClearNoise(perlinNoiseArray);
         ClearNoise(perlinNoiseArrayMPass);
@@ -142,7 +142,7 @@ public class TerrainManager : MonoBehaviour
         waterManager.createWaterPlane(terrainComponent);
 
         //Call Agent Manager
-        //agentManager.Init(terrainTypeGrid);
+        agentManager.IntiateAgentGenerator(terrainTypeGrid, waterManager.getWaterThreshold(), perlinNoiseArrayFinalizedFlipped);
     }
 
     // Resets noise array to hold zeros.
