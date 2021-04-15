@@ -8,6 +8,7 @@ using System.Threading;
 using System.Xml.Schema;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Windows;
 using Random = UnityEngine.Random;
 
 /*  This Manager Manages all Managers :)
@@ -101,6 +102,7 @@ public class TerrainManager : MonoBehaviour
     float[, ] perlinNoiseArray = new float[(int)SIZE_FULL, (int)SIZE_FULL];
     float[, ] perlinNoiseArrayMPass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
     float[, ] perlinNoiseArrayMBasePass = new float[(int)SIZE_FULL, (int)SIZE_FULL];
+    float[, ] perlinNoiseArrayMPoints = new float[(int)SIZE_FULL, (int)SIZE_FULL];
 
     //To be accessed by Water Manager
     float[, ] perlinNoiseArrayFinalized = new float[(int)SIZE_FULL, (int)SIZE_FULL];
@@ -203,17 +205,45 @@ public class TerrainManager : MonoBehaviour
         //Apply texture
         terrainTypeTexture.Apply();
 
+        Texture2D currentTexture;
+
         // Set texture of perlinNoiseMiniMap.
         perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
         perlinNoiseMiniMap = GameObject.Find("perlinNoiseMiniMap").GetComponent<Image>();
         perlinNoiseMiniMap.material = perlinNoiseMaterial;
-        perlinNoiseMiniMap.material.mainTexture = GenerateTexture();
-        //GenerateTexture ();
+
+        currentTexture = GenerateTexture();
+        perlinNoiseMiniMap.material.mainTexture = currentTexture;
+        saveTextureAsPNG(currentTexture, "perlinNoise");
+
+        // Set texture of perlinNoiseMiniMap.
+        perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
+        perlinNoiseMiniMap = GameObject.Find("mountainBaseMiniMap").GetComponent<Image>();
+        perlinNoiseMiniMap.material = perlinNoiseMaterial;
+
+        currentTexture = GenerateTextureMountainProcess();
+        perlinNoiseMiniMap.material.mainTexture = currentTexture;
+        saveTextureAsPNG(currentTexture, "mountainConnections");
+    
+        // Set texture of perlinNoiseMiniMap.
+        perlinNoiseMaterial = new Material(Shader.Find("Unlit/Texture"));
+        perlinNoiseMiniMap = GameObject.Find("mountainPointsMiniMap").GetComponent<Image>();
+        perlinNoiseMiniMap.material = perlinNoiseMaterial;
+
+        currentTexture = GenerateTextureMountainPoints();
+        perlinNoiseMiniMap.material.mainTexture = currentTexture;
+        saveTextureAsPNG(currentTexture, "mountainPoints");
+
         // Set texture of terrainTypeMiniMap.
         terrainTypeMaterial = new Material(Shader.Find("Unlit/Texture"));
         terrainTypeMiniMap = GameObject.Find("terrainTypeMiniMap").GetComponent<Image>();
         terrainTypeMiniMap.material = terrainTypeMaterial;
-        terrainTypeMiniMap.material.mainTexture = GetTerrainTypeTexture();
+
+        currentTexture = GetTerrainTypeTexture();
+        perlinNoiseMiniMap.material.mainTexture = currentTexture;
+        saveTextureAsPNG(currentTexture, "terrainTypeGridFinal");
+
+
     }
 
     void CreateHeightArray()
@@ -227,18 +257,7 @@ public class TerrainManager : MonoBehaviour
             for (int x = 0; x < SIZE_FULL; x++)
             {
 
-                //print(terrainTypeGrid[x, y].a);
-
-                //terrainTypeGrid
-                //if (terrainTypeGrid[x, y].a < perlinNoiseArray[x, y])
-                //{
-                //    perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y];
-
-                //}
-                //else
-                //{
-
-                //perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y];
+           
                 perlinNoiseArrayFinalized[x, y] = perlinNoiseArray[x, y] + (((perlinNoiseArrayMBasePass[x, y] / 2.0f) * perlinNoiseArrayMPass[x, y]) * terrainTypeGrid[x, y].a);
 
                 //}
@@ -246,6 +265,73 @@ public class TerrainManager : MonoBehaviour
             }
         }
 
+    }
+
+    //save texture to file
+    public static void saveTextureAsPNG(Texture2D texture, string name)
+    {
+        byte[] bytes = texture.EncodeToPNG();
+
+        var dirPath = Application.dataPath + "/../SaveImages/";
+        if (!Directory.Exists(dirPath))
+        {
+            Directory.CreateDirectory(dirPath);
+        }
+
+        System.IO.File.WriteAllBytes(dirPath + name, bytes);
+        //Debug.Log(_bytes.Length / 1024 + "Kb was saved as: " + _fullPath);
+    }
+
+    Texture2D GenerateTextureMountainPoints()
+    {
+        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+
+        float noiseValue = 0.0f;
+
+        //Create the texture
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+                noiseValue = perlinNoiseArrayMPoints[x, y];
+
+                Color color = new Color(noiseValue, noiseValue, noiseValue);
+
+                texture.SetPixel(x, y, color);
+
+            }
+        }
+
+        //Apply texture
+        texture.Apply();
+
+        return texture;
+    }
+
+    Texture2D GenerateTextureMountainProcess()
+    {
+        Texture2D texture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+
+        float noiseValue = 0.0f;
+
+        //Create the texture
+        for (int y = 0; y < SIZE_FULL; y++)
+        {
+            for (int x = 0; x < SIZE_FULL; x++)
+            {
+                noiseValue = perlinNoiseArrayMPass[x, y];
+
+                Color color = new Color(noiseValue, noiseValue, noiseValue);
+
+                texture.SetPixel(x, y, color);
+
+            }
+        }
+
+        //Apply texture
+        texture.Apply();
+
+        return texture;
     }
 
     Texture2D GenerateTexture()
@@ -259,15 +345,11 @@ public class TerrainManager : MonoBehaviour
         {
             for (int x = 0; x < SIZE_FULL; x++)
             {
-                // noiseValue = perlinNoiseArray[x, y] / 2.0f;
                 noiseValue = perlinNoiseArrayFinalized[x, y];
 
                 Color color = new Color(noiseValue, noiseValue, noiseValue);
 
                 texture.SetPixel(x, y, color);
-
-                //Create Terrain Height Map Cell 1
-                //perlinNoiseArrayCell[x, y] = noiseValue;
 
             }
         }
@@ -396,29 +478,33 @@ public class TerrainManager : MonoBehaviour
                         xPointsMountainPeak.Add(x);
                         yPointsMountainPeak.Add(y);
 
+                        perlinNoiseArrayMPoints[x, y] = 1.0f;
+
                         //Increment number of points
                         numPoints += 1;
                     }
                     else if (Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) > 15)
                     {
-                        //if (Mathf.Abs (x - xPointsMountainPeak[numPoints - 1]) < 200 && Mathf.Abs (y - yPointsMountainPeak[numPoints - 1]) < 200) {
-                        //print("num points 0, in loop");
+
                         if (terrainTypeGrid[x, y].a == 1.0f)
                         {
                             xPointsMountainPeak.Add(x);
                             yPointsMountainPeak.Add(y);
+
+                            perlinNoiseArrayMPoints[x, y] = 1.0f;
+
                             //Increment number of points
                             numPoints += 1;
                         }
 
-                        //}
-
                     }
-                    //}
+
                 }
                 else
                 {
                     perlinNoiseArrayMPass[x, y] = 0;
+                    perlinNoiseArrayMPoints[x, y] = 0.0f;
+
                     //perlinNoiseArray[x, y] += (Mathf.PerlinNoise(xCoord, yCoord) / ((float)numLayers * (2.0f) + 20.0f));
 
                 }
@@ -436,9 +522,6 @@ public class TerrainManager : MonoBehaviour
 
             }
         }
-
-        //print ("size of points: " + xPointsMountainPeak.Count);
-
 
         float tempx;
         float tempy;
