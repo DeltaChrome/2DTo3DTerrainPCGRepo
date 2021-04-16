@@ -36,11 +36,22 @@ public class AgentGenerator : MonoBehaviour
     const float maxSpacingTrees = 40;
     const float minSpacingTrees = 12;
 
+    const float maxDensityTrees = 0.8f;
+    const float minDensityTrees = 0.25f;
+
     const float maxSpacingGrass = 15;
     const float minSpacingGrass = 8;
 
+    const float maxDensityGrass = 0.30f;
+    const float minDensityGrass = 0.14f;
+
     const float maxSpacingRocks = 40;
     const float minSpacingRocks = 20;
+
+    const float maxDensityRocks = 0.02f;
+    const float minDensityRocks = 0.001f;
+
+    float placementProbability = 0f;
 
     //REMOVE LATER
     float[,] heightMapArray = new float[2049, 2049];
@@ -60,9 +71,11 @@ public class AgentGenerator : MonoBehaviour
         //remove this line later
         heightMapArray = heightMapArrayT;
 
-        for (int x = x_tempValue; x < terrainSize; x += (int)x_elemntSpacing)
+        ElementRecognization(terrainTypeGrid[0, 0]); // need to call this once because its side-effects will initialize the proper element spacing along both dimensions.
+
+        for (int x = x_tempValue; x < terrainSize; x += 10) // (int)x_elemntSpacing)
         {
-            for (int z = z_tempValue; z < terrainSize; z += (int)z_elemntSpacing)
+            for (int z = z_tempValue; z < terrainSize; z += 10) //(int)z_elemntSpacing)
             {
                 AgentGenAlgorithm(x, z);
 
@@ -77,6 +90,9 @@ public class AgentGenerator : MonoBehaviour
 
         int elementIndex = ElementRecognization(terrainTypeGrid[xTile, zTile]);
 
+        if (Random.Range(0.0f, 1.0f) > placementProbability)
+            return;
+
         if (elementIndex < 3)
         {
             Element element = elements[elementIndex];
@@ -89,8 +105,11 @@ public class AgentGenerator : MonoBehaviour
 
             float heightOffSet = 0;
 
-            if (elementIndex == 2)
+            if (elementIndex == 2) // Rocks
             {
+                if (Terrain.activeTerrain.terrainData.GetHeight(xTile, zTile) > 80.0f) // no rocks above snow. It would be better to get this value out of the terrain manager directly
+                    return;
+
                 heightOffSet = -1.5f;
 
             }
@@ -103,23 +122,37 @@ public class AgentGenerator : MonoBehaviour
 
 
             Vector3 rotation;
-            if (elementIndex > 0)
+            Vector3 scale;
+
+            if (elementIndex == 1) // Grass
             {
                 float slope = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
             
                 Vector3 slopeNormal = Terrain.activeTerrain.terrainData.GetInterpolatedNormal(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z);
 
                 rotation = new Vector3(Quaternion.FromToRotation(Vector3.up,slopeNormal).x * slope, Quaternion.FromToRotation(Vector3.up,slopeNormal).y * slope, Quaternion.FromToRotation(Vector3.up,slopeNormal).z * slope);
-            } else {
+ 
+                //The first value of scale and heightValue should have the same amount
+                scale = Vector3.one * Random.Range(0.8f, 1.8f);
+
+            } else if (elementIndex == 0) // Trees
+            {
                 float slopeModToPos = Terrain.activeTerrain.terrainData.GetSteepness(position.x / Terrain.activeTerrain.terrainData.size.x, position.z / Terrain.activeTerrain.terrainData.size.z) / 100;
                 position.y -= slopeModToPos;
 
                 rotation = new Vector3(0, Random.Range(0, 360f), 0);
+
+                //The first value of scale and heightValue should have the same amount
+                scale = Vector3.one * Random.Range(0.8f, 1.8f);
+            }
+            else // Rocks
+            {
+                rotation = new Vector3(Random.Range(0, 360f), Random.Range(0, 360f), Random.Range(0, 360f));
+
+                //The first value of scale and heightValue should have the same amount
+                scale = Vector3.one * Random.Range(0.8f, 4.0f);
             }
 
-
-            //The first value of scale and heightValue should have the same amount
-            Vector3 scale = Vector3.one * Random.Range(0.8f, 1.8f);
 
             GameObject newElement = Instantiate(element.GetRandom());
             newElement.transform.SetParent(transform);
@@ -209,31 +242,38 @@ public class AgentGenerator : MonoBehaviour
         if (maxIndexTest == 0)
         {
             elementIndex = 0; //If element is tree
-            density = colorListIndex[maxIndexTest];
+            density = rgba.r; // colorListIndex[maxIndexTest];
             //print("Density" + density);
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingTrees, minSpacingTrees);
             z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingTrees, minSpacingTrees);
+
+            placementProbability = Mathf.Lerp(minDensityTrees, maxDensityTrees, density);
         }
         else if (maxIndexTest == 1)
         {
             elementIndex = 1; //If element is Grass
-            density = colorListIndex[maxIndexTest];
+            density = rgba.g; // colorListIndex[maxIndexTest];
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
             z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingGrass, minSpacingGrass);
+
+            placementProbability = Mathf.Lerp(minDensityGrass, maxDensityGrass, density);
         }
         else if (maxIndexTest == 2)
         {
             elementIndex = 2; //If element is Rock
-            density = colorListIndex[maxIndexTest];
+            density = rgba.a; // colorListIndex[maxIndexTest]; // using maxIndexTest here is wrong because rocks are at index 3 in the colorListIndex
 
             x_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
             z_elemntSpacing = Mathf.Max((1.0f - density) * maxSpacingRocks, minSpacingRocks);
+
+            placementProbability = Mathf.Lerp(minDensityRocks, maxDensityRocks, density);
         }
         else
         {
             elementIndex = 3;
+            placementProbability = 0;
         }
 
 
