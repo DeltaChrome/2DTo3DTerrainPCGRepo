@@ -1003,8 +1003,8 @@ public class TerrainManager : MonoBehaviour
                         {
                             if ((x + i) < SIZE_FULL)
                             {
-                                //terrainTypeGrid[x + i, y] = eyedropperColour;
-                                terrainTypeGrid[x + i, y] = Color.yellow;
+                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = Color.yellow;
                             }
                         }
                     }
@@ -1016,8 +1016,8 @@ public class TerrainManager : MonoBehaviour
                         {
                             if ((x + i) > 0)
                             {
-                                //terrainTypeGrid[x + i, y] = eyedropperColour;
-                                terrainTypeGrid[x + i, y] = Color.yellow;
+                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = Color.yellow;
                             }
                         }
                     }
