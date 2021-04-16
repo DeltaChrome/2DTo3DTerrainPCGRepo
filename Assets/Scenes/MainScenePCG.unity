@@ -1144,7 +1144,7 @@ Terrain:
   m_DrawInstanced: 0
   m_DrawTreesAndFoliage: 1
   m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 2100000, guid: 2c6f5ab601d22834883d3c7e18f8be41, type: 2}
+  m_MaterialTemplate: {fileID: 2100000, guid: 2a314557039dc094bbb6d6fda3434f7b, type: 2}
   m_BakeLightProbesForTrees: 1
   m_PreserveTreePrototypeLayers: 0
   m_DeringLightProbesForTrees: 1
@@ -1196,7 +1196,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf3debc87e10de942a3836e0c5e15c30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inputMapTexture: {fileID: 2800000, guid: 6d1faadb677bd3a4286f963339f8dcd8, type: 3}
+  inputMapTexture: {fileID: 2800000, guid: c3169ed975e787b4f8f221485a785dc6, type: 3}
   terrainObject: {fileID: 1397282278}
   waterManagerGO: {fileID: 0}
   waterManager: {fileID: 0}
