@@ -11,7 +11,7 @@ using UnityEngine;
 public class WaterManager : MonoBehaviour
 {
     private int SIZE_FULL;
-    private float MIN_SHORE_THRESHOLD = 0.1f;
+    private float MIN_SHORE_THRESHOLD = 0.3f;
     private float MAX_SHORE_THRESHOLD = 0.90f;
     private float WATER_HEIGHT;
     

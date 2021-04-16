@@ -504,7 +504,7 @@ public class TerrainManager : MonoBehaviour
                 if ((Mathf.PerlinNoise(xCoord, yCoord) >= 0.70f))
                 {
 
-                    if (numPoints == 0)
+                    if (numPoints == 0 && terrainTypeGrid[x, y].a == 1.0f)
                     {
 
                         xPointsMountainPeak.Add(x);
@@ -515,7 +515,7 @@ public class TerrainManager : MonoBehaviour
                         //Increment number of points
                         numPoints += 1;
                     }
-                    else if (Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) > 15)
+                    else if (numPoints > 0 && Mathf.Abs(x - xPointsMountainPeak[numPoints - 1]) > 15 && Mathf.Abs(y - yPointsMountainPeak[numPoints - 1]) > 15)
                     {
 
                         if (terrainTypeGrid[x, y].a == 1.0f)
@@ -1414,22 +1414,27 @@ public class TerrainManager : MonoBehaviour
     // Modify the terrain texture to include sand and snow.
     void ModifyTerrainTexture()
     {
-    Texture2D terrainTexture = new Texture2D(2048, 2048);
-    Texture2D terTexOrig = (Texture2D)terrainComponent.materialTemplate.mainTexture;
+        Texture2D terrainTexture = new Texture2D(2048, 2048);
+        Texture2D terTexOrig = (Texture2D)terrainComponent.materialTemplate.mainTexture;
 
-    // Resizing the texture from 1024 -> 2048
-    for (int i = 0; i < 2048; i++)
-    {
-        for (int j = 0; j < 2048; j++)
+        // Resizing the texture from 1024 -> 2048
+        for (int i = 0; i < 2048; i++)
         {
-            terrainTexture.SetPixel(i, j, terTexOrig.GetPixel(i/2, j/2));
+            for (int j = 0; j < 2048; j++)
+            {
+                terrainTexture.SetPixel(i, j, terTexOrig.GetPixel(i/2, j/2));
+            }
         }
-    }
 
-    float xCoord = Random.Range(0.0f, 99999.0f);
-    float yCoord = Random.Range(0.0f, 99999.0f);
-    float heightOfSandMod = (Mathf.PerlinNoise(xCoord, yCoord));
-    float perlinHeightOfSnow = (Mathf.PerlinNoise(xCoord, yCoord))*perlinSnowHeightMod;      
+        float xCoord = Random.Range(0.0f, 99999.0f);
+        float yCoord = Random.Range(0.0f, 99999.0f);
+        float heightOfSandMod = (Mathf.PerlinNoise(xCoord, yCoord));
+        float perlinHeightOfSnow = (Mathf.PerlinNoise(xCoord, yCoord))*perlinSnowHeightMod;
+        float snowWarp = 50f; // larger values give wider waves across the edge of the snow
+        float snowStretch = 20f; // large values give taller waves up and down the mountain
+        float sandWarp = 2f; // larger values give wider waves across the edge of the snow
+        float sandStretch = 0.4f; // large values give taller waves up and down the mountain
+        float mountainThreshold = 0.6f;
 
 
         for (int y = 0; y < (int)SIZE_FULL; y++)
@@ -1450,19 +1455,36 @@ public class TerrainManager : MonoBehaviour
 
                 // Sample the height to check for snow.
                 float height = Terrain.activeTerrain.terrainData.GetHeight(x,y);
-                
+
+                float sandWiggle = sandStretch * (Mathf.PerlinNoise(xCoord + ((float)x) / sandWarp, yCoord + ((float)y) / sandWarp));
                 // Snow terrain recolouring
-                if (height > baseSnowHeight+perlinHeightOfSnow){
+                if (height > baseSnowHeight + Mathf.PerlinNoise(xCoord + ((float)x) / snowWarp, yCoord + ((float)y) / snowWarp) * snowStretch) { 
                     terrainTexture.SetPixel(x, y, Color.white);
                 } 
                 // Shoreline sand terrain recolouring
-                else if(terrainTypeGrid[x,y].b >= Mathf.Min(waterManager.GetMinShoreThreshold() + heightOfSandMod, waterManager.GetMaxShoreThreshold())){
+                else if(terrainTypeGrid[x,y].b >= Mathf.Min(waterManager.GetMinShoreThreshold() + heightOfSandMod + sandWiggle, waterManager.GetMaxShoreThreshold())){
                     if(sandIsBlackSpeck){
                         // Black speckling that often sand possesses.
                         terrainTexture.SetPixel(x, y, Color.black);
                     } else {
                         // Sand colour being shifted is various ways
                         terrainTexture.SetPixel(x, y, new Color(149.0f/255.0f + sandColModR * sandRAddOrSub /divisor, 130.0f/255.0f + sandColModG * sandGAddOrSub /divisor, 70.0f/255.0f + sandColModB * sandBAddOrSub /divisor, 0 + sandColModA * sandAAddOrSub /divisor));
+                    }
+                }
+                else if (terrainTypeGrid[x, y].a >= mountainThreshold)
+                {
+                    Color curColor = terrainTexture.GetPixel(x, y);
+                    if (sandIsBlackSpeck)
+                    {
+                        // Black speckling that often sand possesses.
+                        terrainTexture.SetPixel(x, y, Color.black);
+                    }
+                    else
+                    {
+                        //Color newColor = new Color(curColor.r, curColor.b, curColor.g, curColor.a);
+                        // Mountain colour being shifted is various ways
+                        float blendAmount = Mathf.Lerp(0f, 0.6f, (terrainTypeGrid[x, y].a - mountainThreshold) / (1.0f - mountainThreshold));
+                        terrainTexture.SetPixel(x, y, Color.Lerp(curColor, Color.gray, blendAmount));
                     }
                 }
             }
