@@ -1,4 +1,6 @@
 ﻿
+using System.Drawing;
+using System.Security.Cryptography;
 using System.ComponentModel;
 using System.Reflection;
 using System;
@@ -10,6 +12,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Windows;
 using Random = UnityEngine.Random;
+using Color = UnityEngine.Color;
 
 /*  This Manager Manages all Managers :)
  *  Big Boss
@@ -77,6 +80,9 @@ public class TerrainManager : MonoBehaviour
     /* ------------------------------------------------------------------ */
 
     // Terrain type grid texture for terrainTypeMiniMap
+    private Texture2D terrainTypeBeforeFillTexture;
+    private Texture2D terrainTypeFilledAndHorizWarpTexture;
+    private Texture2D terrainTypeAfterVertWarpTexture;
     private Texture2D terrainTypeTexture;
     // Variables for rendering the mini maps for perlin noise and terrsain types.
     private Image terrainTypeMiniMap;
@@ -95,6 +101,7 @@ public class TerrainManager : MonoBehaviour
     private const int perlinSnowHeightMod = 20;
     // Higher will mean higher variation in the colour variation of the shoreline sand.
     private const int perlinSandVariationSpecklingMod = 30;
+
 
     /* ------------------------------------------------------------------ */
 
@@ -126,6 +133,8 @@ public class TerrainManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        UnityEngine.Random.InitState((int)42);
+
         float timeStart = Time.realtimeSinceStartup;
 
         terrainTypeTexture = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
@@ -191,6 +200,29 @@ public class TerrainManager : MonoBehaviour
         }
     }
 
+
+    void GenerateTTGOneImage(Texture2D mapTexture, string name)
+    {
+        mapTexture  = new Texture2D((int)SIZE_FULL, (int)SIZE_FULL);
+        for (int x = 0; x < SIZE_FULL; x++)
+        {
+            for (int y = 0; y < SIZE_FULL; y++)
+            {
+                mapTexture.SetPixel(x, y, terrainTypeGrid[x, y]);
+            }
+        }
+        //Apply texture
+        mapTexture.Apply();
+
+        Material mapMaterial = new Material(Shader.Find("Unlit/Texture"));
+        Image miniMap = GameObject.Find(name).GetComponent<Image>();
+        miniMap.material = mapMaterial;
+
+        miniMap.material.mainTexture = mapTexture;
+        saveTextureAsPNG(mapTexture, name);
+    }
+
+
     //Generates the physical GUI
     void GenerateMapsGUI()
     {
@@ -240,7 +272,7 @@ public class TerrainManager : MonoBehaviour
         terrainTypeMiniMap.material = terrainTypeMaterial;
 
         currentTexture = GetTerrainTypeTexture();
-        perlinNoiseMiniMap.material.mainTexture = currentTexture;
+        terrainTypeMiniMap.material.mainTexture = currentTexture;
         saveTextureAsPNG(currentTexture, "terrainTypeGridFinal");
 
 
@@ -278,7 +310,7 @@ public class TerrainManager : MonoBehaviour
             Directory.CreateDirectory(dirPath);
         }
 
-        System.IO.File.WriteAllBytes(dirPath + name, bytes);
+        System.IO.File.WriteAllBytes(dirPath + name + ".png", bytes);
         //Debug.Log(_bytes.Length / 1024 + "Kb was saved as: " + _fullPath);
     }
 
@@ -874,6 +906,7 @@ public class TerrainManager : MonoBehaviour
                 terrainTypeGrid[i, n] = new Color(9.9f, 9.9f, 9.9f, 9.9f);
             }
         }
+        //GenerateTTGOneImage(terrainTypeBeforeFillTexture, "TTGBeforeFill");
     }
 
     // Fill the terrainTypeGrid with values corresponding to the inputMapGrid and warp the shape of the horizontal borders between the terrain types.
@@ -909,6 +942,7 @@ public class TerrainManager : MonoBehaviour
                                 if ((y + i) < SIZE_FULL)
                                 {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
+                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         }
@@ -921,6 +955,7 @@ public class TerrainManager : MonoBehaviour
                                 if ((y + i) > 0)
                                 {
                                     terrainTypeGrid[x, y + i] = eyedropperColour;
+                                    //terrainTypeGrid[x, y + i] = Color.yellow;
                                 }
                             }
                         }
@@ -936,6 +971,7 @@ public class TerrainManager : MonoBehaviour
             }
 
         }
+        GenerateTTGOneImage(terrainTypeFilledAndHorizWarpTexture, "TTGFilledAndHorizWarp");
     }
 
     // Warp the shape of the vertical borders between the terrain types.
@@ -967,7 +1003,8 @@ public class TerrainManager : MonoBehaviour
                         {
                             if ((x + i) < SIZE_FULL)
                             {
-                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = eyedropperColour;
+                                terrainTypeGrid[x + i, y] = Color.yellow;
                             }
                         }
                     }
@@ -979,13 +1016,15 @@ public class TerrainManager : MonoBehaviour
                         {
                             if ((x + i) > 0)
                             {
-                                terrainTypeGrid[x + i, y] = eyedropperColour;
+                                //terrainTypeGrid[x + i, y] = eyedropperColour;
+                                terrainTypeGrid[x + i, y] = Color.yellow;
                             }
                         }
                     }
                 }
             }
         }
+        GenerateTTGOneImage(terrainTypeAfterVertWarpTexture, "TTGAfterVertWarp");
     }
 
     int getBorderShiftValue(float perlinShiftValue)
