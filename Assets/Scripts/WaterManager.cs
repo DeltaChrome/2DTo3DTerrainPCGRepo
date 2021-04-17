@@ -18,6 +18,9 @@ public class WaterManager : MonoBehaviour
     public List<WaterDataObject> shoreLines = new List<WaterDataObject>();  // this could be for Nader eventually
     public List<WaterDataObject> allWater   = new List<WaterDataObject>();
 
+    public Material waterShader;
+    public GameObject waterPlane;
+
     /* //////////////////////////////////////*/
     /* #### IGNORE DEBUGGING VARS BELOW #### */
     /* //////////////////////////////////////*/
@@ -130,15 +133,16 @@ public class WaterManager : MonoBehaviour
         */
 
         // create the single water plane to "dissect" the Terrain on the z-axis
-        GameObject waterPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        //GameObject waterPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
 
         waterPlane.transform.localScale = new Vector3(100.0f, 1.0f, 100.0f);
         waterPlane.transform.position = new Vector3(bodyWaterX, lowestWaterHeight + 0.1f, bodyWaterY);
         // apply blue material to simulate water
         Renderer waterMaterial = waterPlane.GetComponent<Renderer>(); // grab the renderer component on the plane
-        Material waterShader = new Material(Shader.Find("Legacy Shaders/Transparent/Specular"));
+        //Material waterShader = new Material(Shader.Find("Legacy Shaders/Transparent/Parallax Specular"));
+        //waterMaterial.material = waterShader;
+        //waterMaterial.material.SetColor("_Color", new Color(5.0f/255.0f,182.0f/255.0f,234.0f/255.0f,0.95f));
         waterMaterial.material = waterShader;
-        waterMaterial.material.SetColor("_Color", new Color(5.0f/255.0f,182.0f/255.0f,234.0f/255.0f,0.95f));
     }
 
     /*

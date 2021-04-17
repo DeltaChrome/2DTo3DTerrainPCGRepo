@@ -127,6 +127,9 @@ public class TerrainManager : MonoBehaviour
     public WaterManager waterManager;
     public AgentGenerator agentManager;
 
+    public Material waterShader;
+    public GameObject waterPlane;
+
     //Agent Manager Script - Nader's Code
     //*Mountain Manager Script - Jacob's Code*
 
@@ -174,6 +177,8 @@ public class TerrainManager : MonoBehaviour
         GenerateTerrain();
 
         // WaterManager AGAIN
+        waterManager.waterShader = waterShader;
+        waterManager.waterPlane = waterPlane;
         waterManager.createWaterPlane(terrainComponent);
         
         float timeStartPlace = Time.realtimeSinceStartup;
@@ -844,6 +849,7 @@ public class TerrainManager : MonoBehaviour
         inputMapGrid = new Color[inputMapTextureDim, inputMapTextureDim];
 
         ColorCorrectInputMap();
+        
         SetupTerrainTypeGridUntextured();
 
         FillAndWarpHorizBorders();
@@ -971,7 +977,7 @@ public class TerrainManager : MonoBehaviour
             }
 
         }
-        GenerateTTGOneImage(terrainTypeFilledAndHorizWarpTexture, "TTGFilledAndHorizWarp");
+        //GenerateTTGOneImage(terrainTypeFilledAndHorizWarpTexture, "TTGFilledAndHorizWarp");
     }
 
     // Warp the shape of the vertical borders between the terrain types.
